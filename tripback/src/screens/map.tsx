@@ -6,6 +6,7 @@ import { useRouter } from '@/nav';
 import { useAppState } from '@/components/app-state';
 import { Motion } from '@/components/motion';
 import { SiteMap, SiteMapHandle } from '@/components/site-map';
+import type { MapViewport } from '@/components/map-types';
 import { TabBar } from '@/components/tab-bar';
 import { formatMeters, haversine, useNearby } from '@/components/use-nearby';
 import { AHEAD_COORDS, DONE_COORDS, tidy } from '@/components/walk-route';
@@ -16,9 +17,9 @@ export default function MapScreen() {
   const router = useRouter();
   const { opened, activeWalk, startWalk, endWalk, location } = useAppState();
   const mapCtl = useRef<SiteMapHandle>(null);
-  const [lookAt, setLookAt] = useState<[number, number] | null>(null);
+  const [lookAt, setLookAt] = useState<MapViewport | null>(null);
   const nearby = useNearby(lookAt);
-  const browseGeo: [number, number] = lookAt
+  const browseGeo: [number, number] = lookAt?.center
     ?? (location ? [location.longitude, location.latitude] : USER_GEO);
 
   const openSite = (id: string) => {
@@ -102,11 +103,14 @@ export default function MapScreen() {
 
   // The nudge points at the nearest portal you haven't opened yet — or, in
   // demo mode, at whichever site the dot is walking past right now.
+  const closestCurated = [...PLACES]
+    .filter((place) => !opened[place.id])
+    .sort((a, b) => haversine(browseGeo, a.geo) - haversine(browseGeo, b.geo))[0];
   const target = demoSite
     ? findPlace(demoSite)
-    : [...PLACES]
-        .filter((place) => !opened[place.id])
-        .sort((a, b) => haversine(browseGeo, a.geo) - haversine(browseGeo, b.geo))[0];
+    : closestCurated && haversine(browseGeo, closestCurated.geo) <= 3_000
+      ? closestCurated
+      : undefined;
   const targetMeters = target ? formatMeters(haversine(browseGeo, target.geo)) : '';
   const targetArea = target ? target.dist.split(' · ')[1] : '';
   const targetRange = target
@@ -232,7 +236,7 @@ export default function MapScreen() {
                 <Text style={styles.cardGoText}>›</Text>
               </View>
             </Pressable>
-          ) : !demoSite ? (
+          ) : !demoSite && nearby?.length === 0 ? (
             <View style={[styles.cardInner, { width: 330 }]}>
               <View style={[styles.cardThumb, styles.yearThumb]}>
                 <Text style={styles.yearThumbText}>✓</Text>

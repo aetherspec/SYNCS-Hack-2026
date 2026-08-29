@@ -32,12 +32,20 @@ export async function createHistoricalView({
   return requestHistoricalImage({
     imageBase64,
     mimeType,
-    prompt: `Edit the supplied modern photograph into a historically plausible view from approximately ${year}.
+    prompt: `Reconstruct the supplied modern photograph as a realistic view of this exact location in approximately ${year}.
 
 Location: latitude ${coordinate.latitude.toFixed(5)}, longitude ${coordinate.longitude.toFixed(5)}, Sydney, Australia.
 Nearby place context: ${placeContext}
 
-Keep the camera position, lens perspective, framing, terrain, and major spatial layout from the original photo. If people are visible, preserve each person's identity, face, body, pose, expression, and position; change only historically inappropriate clothing details when necessary. Reconstruct the surrounding buildings, shopfronts, street surface, transport, signage, lighting, and lively street activity using plausible details for Sydney in ${year}. Do not add a border, caption, date stamp, split screen, or explanatory text inside the image. Avoid fantasy, nostalgia filters, and famous people. The result should look like a realistic photograph captured from the same viewpoint, while remaining an explicitly AI-generated historical interpretation.`,
+Use available historical context and search grounding to determine what physically occupied these coordinates in ${year} before editing the scene.
+
+Preservation priority:
+1. Keep the original camera position, height, lens perspective, viewing direction, framing, horizon, and the screen-space positions of people.
+2. Treat the modern photograph as a geometric and compositional scaffold only where it is historically compatible. Preserve the shape, scale, depth, openings, and placement of buildings, rooms, streets, and large objects that genuinely existed in ${year}.
+3. Translate incompatible modern objects into believable period equivalents while retaining their approximate size and placement: for example, a whiteboard may become a chalkboard, electric fittings may become period lighting, and modern furniture or signs may become contemporary equivalents.
+4. Historical reality overrides the modern scaffold when the land use or structure was fundamentally different. If this room or building did not exist and the site was farmland, bushland, water, another building, or an outdoor street in ${year}, replace the modern enclosure with that historically correct environment from the same camera coordinates and direction. Do not preserve modern walls merely because they appear in the source.
+
+If people are visible, preserve each person's identity, face, body, pose, expression, and position; change only historically inappropriate clothing details when necessary. Reconstruct architecture, interiors, shopfronts, street surfaces, transport, signage, materials, lighting, vegetation, and activity for Sydney in ${year}. Do not simply apply a vintage filter or costumes to a modern scene. Do not add a border, caption, date stamp, split screen, or explanatory text inside the image. Avoid fantasy, nostalgia filters, and famous people. The result should look like a realistic photograph captured from the same viewpoint, while remaining an AI-generated historical interpretation.`,
     imageConfig: { imageSize: '1K' },
   });
 }
@@ -64,12 +72,20 @@ export async function createHistoricalPanorama({
   return requestHistoricalImage({
     imageBase64,
     mimeType,
-    prompt: `Edit the supplied modern photograph into an ultra-wide cinematic historical streetscape from approximately ${year}.
+    prompt: `Reconstruct the supplied modern photograph as an ultra-wide, realistic view of this exact location in approximately ${year}.
 
 Location: latitude ${coordinate.latitude.toFixed(5)}, longitude ${coordinate.longitude.toFixed(5)}, Sydney, Australia.
 Nearby place context: ${placeContext}
 
-Keep the original camera height and viewpoint in the centre of a continuous 21:9 panorama. Extend plausible neighbouring shopfronts, street, sky, and activity to the left and right so a walker can look around. If people are visible in the source photo, preserve each person's identity, face, body, pose, expression, and position. Do not add a border, caption, date stamp, split screen, fisheye distortion, or 360 spherical wrap. Avoid fantasy and famous people. This remains an AI-generated historical interpretation, not an archival photograph.`,
+Use available historical context and search grounding to determine what physically occupied these coordinates in ${year} before editing the scene.
+
+Preservation priority:
+1. Keep the original camera position, height, lens perspective, viewing direction, central framing, horizon, and the screen-space positions of people.
+2. Treat the modern image as a geometric and compositional scaffold only where historically compatible. Preserve the shape, scale, depth, openings, and placement of buildings, rooms, streets, and large objects that genuinely existed in ${year}.
+3. Translate incompatible modern objects into believable period equivalents while retaining their approximate size and placement: for example, a whiteboard may become a chalkboard, electric fittings may become period lighting, and modern furniture or signs may become contemporary equivalents.
+4. Historical reality overrides the modern scaffold when the site was fundamentally different. If the photographed room or building did not exist and these coordinates were farmland, bushland, water, another building, or an outdoor street in ${year}, replace the modern enclosure with that historically correct environment from the same camera coordinates and direction. Do not preserve modern walls merely because they appear in the source.
+
+Keep the original viewpoint in the centre of a continuous 21:9 panorama and extend the historically correct environment, architecture, sky, and activity to the left and right so a walker can look around. If people are visible, preserve each person's identity, face, body, pose, expression, and position; change only historically inappropriate clothing details. Do not simply apply a vintage filter or costumes to a modern scene. Do not add a border, caption, date stamp, split screen, fisheye distortion, or 360 spherical wrap. Avoid fantasy, nostalgia filters, and famous people. This remains an AI-generated historical interpretation, not an archival photograph.`,
     imageConfig: { aspectRatio: '21:9', imageSize: '2K' },
   });
 }

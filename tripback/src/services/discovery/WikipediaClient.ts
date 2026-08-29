@@ -99,13 +99,15 @@ export async function fetchPlacePhoto(title: string): Promise<string | undefined
 
 export async function fetchWikipediaCandidates(
   origin: Coordinate,
+  radiusMetres: number = tripBackConfig.searchRadiusMetres,
+  limit: number = 12,
 ): Promise<StoryCandidate[]> {
   const params = new URLSearchParams({
     action: 'query',
     generator: 'geosearch',
     ggscoord: `${origin.latitude}|${origin.longitude}`,
-    ggsradius: String(tripBackConfig.searchRadiusMetres),
-    ggslimit: '12',
+    ggsradius: String(Math.min(10_000, Math.max(10, Math.round(radiusMetres)))),
+    ggslimit: String(Math.min(50, Math.max(1, limit))),
     prop: 'coordinates|extracts|pageimages|info',
     exintro: '1',
     explaintext: '1',

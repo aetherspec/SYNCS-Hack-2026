@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { currentCoordinate, useAppState } from '@/components/app-state';
+import type { MapViewport } from '@/components/map-types';
 import { tripBackConfig } from '@/config';
 import { PLACES } from '@/constants/places';
 import { distanceMetres, roundedSearchCoordinate } from '@/domain/geo';
@@ -50,9 +51,9 @@ function relativeTo(origin: Coordinate, items: NearbyPlace[]): NearbyPlace[] {
     .sort((a, b) => a.meters - b.meters);
 }
 
-function fetchNearby(origin: Coordinate): Promise<NearbyPlace[]> {
+function fetchNearby(origin: Coordinate, radiusMetres: number): Promise<NearbyPlace[]> {
   const seeded = new Set(PLACES.map((place) => place.name.toLowerCase()));
-  return listNearbyPlaces(origin).then((candidates) =>
+  return listNearbyPlaces(origin, { radiusMetres, limit: 40 }).then((candidates) =>
     candidates
       .filter(
         (candidate) =>
@@ -63,29 +64,45 @@ function fetchNearby(origin: Coordinate): Promise<NearbyPlace[]> {
       )
       .map(toNearby)
       .sort((a, b) => a.meters - b.meters)
-      .slice(0, 8),
+      .slice(0, 40),
   );
 }
 
+function viewportRadius(viewport?: MapViewport | null): number {
+  if (!viewport) return 800;
+  const northSouth = viewport.latitudeDelta * 111_000;
+  const eastWest =
+    viewport.longitudeDelta * 111_000 * Math.cos((viewport.center[1] * Math.PI) / 180);
+  return Math.min(10_000, Math.max(800, Math.hypot(northSouth, eastWest) * 0.55));
+}
+
 /** Nearby Wikipedia / Heritage spots around GPS, or around a map-camera look-at. */
-export function useNearby(lookAt?: [number, number] | null) {
+export function useNearby(lookAt?: MapViewport | null) {
   const { location } = useAppState();
   const [nearby, setNearby] = useState<NearbyPlace[] | null>(null);
   const lastSearch = useRef<Coordinate | null>(null);
+  const lastRadius = useRef(0);
   const loaded = useRef(false);
+  const hasLocation = !!location;
   const gps = currentCoordinate(location);
   const origin: Coordinate = lookAt
-    ? { latitude: lookAt[1], longitude: lookAt[0] }
+    ? { latitude: lookAt.center[1], longitude: lookAt.center[0] }
     : gps;
+  const radiusMetres = viewportRadius(lookAt);
 
   useEffect(() => {
+    if (!location && !lookAt) {
+      setNearby(null);
+      return;
+    }
     const rounded = roundedSearchCoordinate(origin);
     setNearby((prev) => (prev ? relativeTo(rounded, prev) : prev));
 
     const previous = lastSearch.current;
     if (
       previous &&
-      distanceMetres(previous, rounded) < tripBackConfig.minimumSearchMovementMetres
+      distanceMetres(previous, rounded) < tripBackConfig.minimumSearchMovementMetres &&
+      Math.abs(radiusMetres - lastRadius.current) < Math.max(200, lastRadius.current * 0.25)
     ) {
       return;
     }
@@ -93,10 +110,11 @@ export function useNearby(lookAt?: [number, number] | null) {
     let cancelled = false;
     const delay = previous ? 320 : 0;
     const timer = setTimeout(() => {
-      void fetchNearby(rounded)
+      void fetchNearby(rounded, radiusMetres)
         .then((items) => {
           if (cancelled) return;
           lastSearch.current = rounded;
+          lastRadius.current = radiusMetres;
           loaded.current = true;
           setNearby(relativeTo(rounded, items));
         })
@@ -109,7 +127,7 @@ export function useNearby(lookAt?: [number, number] | null) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [origin.latitude, origin.longitude]);
+  }, [hasLocation, origin.latitude, origin.longitude, radiusMetres]);
 
   return nearby;
 }

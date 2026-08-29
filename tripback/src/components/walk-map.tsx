@@ -1,7 +1,8 @@
-import { forwardRef, useImperativeHandle } from 'react';
+import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import MapView, { Marker, Polyline, type LatLng, type Region } from 'react-native-maps';
 
+import type { Coordinate } from '@/domain/types';
 import { Fonts, Palette } from '@/constants/theme';
 
 export type WalkMapHandle = {
@@ -9,41 +10,101 @@ export type WalkMapHandle = {
   fitRoute: () => void;
 };
 
-// Native fallback for the walk-detail route map: the stylised SVG card.
-// (Web renders live tiles — see walk-map.web.tsx.)
+type WalkMapStop = {
+  id: string;
+  name: string;
+  coordinate?: Coordinate;
+};
+
+const fallbackRegion: Region = {
+  latitude: -33.8688,
+  longitude: 151.2093,
+  latitudeDelta: 0.025,
+  longitudeDelta: 0.025,
+};
+
+function latLng(point: Coordinate): LatLng {
+  return { latitude: point.latitude, longitude: point.longitude };
+}
+
 export const WalkMap = forwardRef<
   WalkMapHandle,
-  { height?: number; label?: string }
->(function WalkMap({ height = 230, label = '4 portals opened' }, ref) {
-    useImperativeHandle(ref, () => ({ flyToNext: () => {}, fitRoute: () => {} }));
-    return (
-      <View style={[styles.card, { height }]}>
-        <Svg viewBox="0 0 350 190" style={{ width: '100%', height: '100%' }}>
-          <Rect width={350} height={190} fill={Palette.lavender} />
-          <Path
-            d="M0 30 H350 V58 C260 78 180 48 90 66 C50 74 20 62 0 70 Z"
-            fill={Palette.sky}
+  { height?: number; label?: string; route?: Coordinate[]; stops?: WalkMapStop[] }
+>(function WalkMap(
+  { height = 230, label = 'Walk saved', route = [], stops = [] },
+  ref,
+) {
+  const mapRef = useRef<MapView>(null);
+  const routeCoordinates = useMemo(() => route.map(latLng), [route]);
+  const stopCoordinates = useMemo(
+    () => stops.flatMap((stop) => (stop.coordinate ? [latLng(stop.coordinate)] : [])),
+    [stops],
+  );
+  const allCoordinates = useMemo(
+    () => [...routeCoordinates, ...stopCoordinates],
+    [routeCoordinates, stopCoordinates],
+  );
+
+  const fitRoute = () => {
+    if (allCoordinates.length === 0) return;
+    mapRef.current?.fitToCoordinates(allCoordinates, {
+      animated: false,
+      edgePadding: { top: 54, right: 42, bottom: 42, left: 42 },
+    });
+  };
+
+  useImperativeHandle(ref, () => ({
+    flyToNext: fitRoute,
+    fitRoute,
+  }));
+
+  return (
+    <View style={[styles.card, { height }]}>
+      <MapView
+        ref={mapRef}
+        style={StyleSheet.absoluteFill}
+        initialRegion={fallbackRegion}
+        onMapReady={fitRoute}
+        showsUserLocation={false}
+        showsPointsOfInterests
+        pitchEnabled={false}
+      >
+        {routeCoordinates.length > 1 ? (
+          <Polyline
+            coordinates={routeCoordinates}
+            strokeColor={Palette.purple}
+            strokeWidth={6}
+            lineCap="round"
+            lineJoin="round"
           />
-          <Path
-            d="M60 175 C80 130 60 100 120 92 C190 84 180 140 250 128 C300 120 300 90 320 60"
-            stroke={Palette.purple}
-            strokeWidth={5}
-            strokeLinecap="round"
-            strokeDasharray="2 10"
-            fill="none"
-          />
-          <Circle cx={60} cy={175} r={9} fill={Palette.lime} />
-          <Circle cx={120} cy={92} r={9} fill={Palette.lime} />
-          <Circle cx={250} cy={128} r={9} fill={Palette.lime} />
-          <Circle cx={320} cy={60} r={9} fill={Palette.purple} />
-        </Svg>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{label}</Text>
-        </View>
+        ) : null}
+        {stops.map((stop, index) =>
+          stop.coordinate ? (
+            <Marker
+              key={`${stop.id}:${index}`}
+              coordinate={latLng(stop.coordinate)}
+              title={stop.name}
+              anchor={{ x: 0.5, y: 0.5 }}
+            >
+              <View style={styles.stopMarker}>
+                <Text style={styles.stopMarkerText}>{index + 1}</Text>
+              </View>
+            </Marker>
+          ) : null,
+        )}
+      </MapView>
+      <View style={styles.badge} pointerEvents="none">
+        <Text style={styles.badgeText}>{label}</Text>
       </View>
-    );
-  }
-);
+      {allCoordinates.length === 0 ? (
+        <View style={styles.empty} pointerEvents="none">
+          <Text style={styles.emptyTitle}>No route points recorded</Text>
+          <Text style={styles.emptyText}>Future walks will appear here as you move.</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+});
 
 const styles = StyleSheet.create({
   card: {
@@ -63,4 +124,31 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   badgeText: { fontFamily: Fonts.bodyBold, fontSize: 11, color: Palette.lime },
+  stopMarker: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 3,
+    borderColor: Palette.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Palette.lime,
+    boxShadow: '0 4px 10px rgba(16,16,20,0.25)',
+  },
+  stopMarkerText: { fontFamily: Fonts.displayBold, fontSize: 13, color: Palette.ink },
+  empty: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 30,
+    backgroundColor: Palette.lavender,
+  },
+  emptyTitle: { fontFamily: Fonts.displayBold, fontSize: 16, color: Palette.ink },
+  emptyText: {
+    marginTop: 4,
+    fontFamily: Fonts.body,
+    fontSize: 12.5,
+    textAlign: 'center',
+    color: Palette.muted,
+  },
 });

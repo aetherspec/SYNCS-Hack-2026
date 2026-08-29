@@ -9,6 +9,7 @@ export type Place = {
   dist: string;
   est: string;
   eras: string[];
+  events: Array<{ year: string; title: string; detail: string }>;
   stamp: string; // passport stamp tint
   tilt: string; // passport stamp rotation
   sources: string;
@@ -25,7 +26,12 @@ export const PLACES: Place[] = [
     short: 'Customs Hse',
     dist: '40 m away · Circular Quay',
     est: 'est. 1845',
-    eras: ['1897', '1931', '1964'],
+    eras: ['1845', '1897', '1901'],
+    events: [
+      { year: '1845', title: 'Customs House opened', detail: 'The original Customs House opened here in 1845 as shipping transformed Circular Quay.' },
+      { year: '1897', title: 'The customs floor at its peak', detail: 'By 1897, cargo was declared beneath gas lamps while horse trams moved along Loftus Street.' },
+      { year: '1901', title: 'Federation crowds gathered', detail: 'In 1901, crowds gathered on the forecourt as the new Commonwealth of Australia was proclaimed.' },
+    ],
     stamp: '#FFF3C4',
     tilt: '-5deg',
     sources: 'Sources: Heritage NSW listing 00042 · Wikipedia',
@@ -41,7 +47,11 @@ export const PLACES: Place[] = [
     short: 'Cadman’s',
     dist: '220 m away · The Rocks',
     est: 'est. 1816',
-    eras: ['1901', '1938'],
+    eras: ['1816', '1901'],
+    events: [
+      { year: '1816', title: 'The cottage was built', detail: 'Cadman’s Cottage was built in 1816 beside the original shoreline as a home for government coxswains.' },
+      { year: '1901', title: 'The harbour reached its steps', detail: 'Photographs from around 1901 show ferrymen’s skiffs beside the cottage, before the shoreline was pushed outward.' },
+    ],
     stamp: '#FFE1EC',
     tilt: '4deg',
     sources: 'Sources: Heritage NSW listing 00043 · Wikipedia',
@@ -57,7 +67,11 @@ export const PLACES: Place[] = [
     short: 'Hero of W’loo',
     dist: '450 m away · Millers Point',
     est: 'est. 1843',
-    eras: ['1928', '1955'],
+    eras: ['1843', '1928'],
+    events: [
+      { year: '1843', title: 'The pub opened', detail: 'The Hero of Waterloo opened in 1843, built from sandstone quarried around Millers Point.' },
+      { year: '1928', title: 'A working harbour pub', detail: 'The 1928 streetscape shows the corner lamp and cellar hoist serving a busy waterfront pub.' },
+    ],
     stamp: '#DFF6FF',
     tilt: '-3deg',
     sources: 'Sources: Heritage NSW listing 00561 · Wikipedia',
@@ -73,7 +87,11 @@ export const PLACES: Place[] = [
     short: 'Observatory',
     dist: '650 m away · Observatory Hill',
     est: 'est. 1858',
-    eras: ['1888', '1930'],
+    eras: ['1858', '1888'],
+    events: [
+      { year: '1858', title: 'The observatory opened', detail: 'Sydney Observatory was completed in 1858 to keep time, chart the southern sky, and serve harbour shipping.' },
+      { year: '1888', title: 'The time-ball kept harbour time', detail: 'In 1888 the tower’s time-ball still dropped at 1 pm so ships could set their chronometers.' },
+    ],
     stamp: '#EDEBFF',
     tilt: '6deg',
     sources: 'Sources: MAAS collection · Wikipedia',
@@ -89,7 +107,11 @@ export const PLACES: Place[] = [
     short: 'Garrison Ch.',
     dist: '280 m away · Church Hill',
     est: 'est. 1840',
-    eras: ['1902', '1946'],
+    eras: ['1840', '1902'],
+    events: [
+      { year: '1840', title: 'Australia’s military church began', detail: 'The foundation stone was laid in 1840 for the colony’s first church built for the military garrison.' },
+      { year: '1902', title: 'Before the modern Argyle Cut', detail: 'The 1902 streetscape shows the sandstone church and its surroundings before later road widening reshaped the area.' },
+    ],
     stamp: '#CDEFC4',
     tilt: '-4deg',
     sources: 'Sources: Heritage NSW listing 00035 · Wikipedia',

@@ -36,6 +36,12 @@ export const AppleMap = forwardRef<SiteMapHandle, SiteMapViewProps>(function App
   const onLookAtRef = useRef(onLookAt);
   onLookAtRef.current = onLookAt;
 
+  const visibleRegion = (region: Region) => ({
+    center: [region.longitude, region.latitude] as [number, number],
+    latitudeDelta: region.latitudeDelta,
+    longitudeDelta: region.longitudeDelta,
+  });
+
   const cameraDeltas = () => ({
     latitudeDelta: regionRef.current.latitudeDelta,
     longitudeDelta: regionRef.current.longitudeDelta,
@@ -112,24 +118,48 @@ export const AppleMap = forwardRef<SiteMapHandle, SiteMapViewProps>(function App
         },
         800,
       );
-      onLookAtRef.current?.(lngLat);
+      onLookAtRef.current?.(
+        visibleRegion({
+          ...lngLatToCoord(lngLat),
+          latitudeDelta: 0.006,
+          longitudeDelta: 0.006,
+        }),
+      );
     },
   }));
+
+  if (!location && !demoLocked.current) {
+    return (
+      <View style={styles.locating}>
+        <View style={styles.userHalo}>
+          <View style={styles.userDot} />
+        </View>
+        <Text style={styles.locatingText}>Finding your location…</Text>
+      </View>
+    );
+  }
+
+  const start = currentCoordinate(location);
+  const initialRegion: Region = {
+    latitude: start.latitude,
+    longitude: start.longitude,
+    latitudeDelta: rocksRegion.latitudeDelta,
+    longitudeDelta: rocksRegion.longitudeDelta,
+  };
 
   return (
     <MapView
       ref={mapRef}
       style={StyleSheet.absoluteFill}
-      initialRegion={rocksRegion}
+      initialRegion={initialRegion}
       showsCompass={false}
-      showsPointsOfInterests={false}
+      showsPointsOfInterests
       onPanDrag={() => {
         following.current = false;
       }}
       onRegionChangeComplete={(region) => {
         regionRef.current = region;
-        if (following.current) return;
-        onLookAtRef.current?.([region.longitude, region.latitude]);
+        onLookAtRef.current?.(visibleRegion(region));
       }}
     >
       {PLACES.map((place) => {
@@ -181,6 +211,14 @@ export const AppleMap = forwardRef<SiteMapHandle, SiteMapViewProps>(function App
 });
 
 const styles = StyleSheet.create({
+  locating: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    backgroundColor: Palette.lavender,
+  },
+  locatingText: { fontFamily: Fonts.bodyBold, fontSize: 14, color: Palette.inkSoft },
   pin: { alignItems: 'center' },
   pill: {
     paddingVertical: 7,

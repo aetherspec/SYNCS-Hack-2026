@@ -21,7 +21,7 @@ export default function WalkDetailScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const { walks, discovered, sitePortals, loadPortalMedia } = useAppState();
+  const { walks, discovered, sitePortals, loadPortalMedia, openPortalViewer } = useAppState();
   const walk = walks.find((item) => item.id === id) ?? walks[0];
   const [portal, setPortal] = useState(-1);
 
@@ -36,9 +36,14 @@ export default function WalkDetailScreen() {
   const rows = walk.stops.map((st, i) => ({
     n: String(i + 1),
     id: st.id,
-    name: discovered[st.id]?.name ?? PLACES.find((item) => item.id === st.id)?.name ?? st.id,
+    name:
+      st.name ??
+      discovered[st.id]?.name ??
+      PLACES.find((item) => item.id === st.id)?.name ??
+      'Saved place',
     meta: `${st.time} · viewed ${st.era}`,
     tint: walk.tints[i] ?? Palette.butter,
+    coordinate: st.coordinate,
   }));
 
   const st = walk.stops[Math.max(0, portal)] ?? walk.stops[0];
@@ -66,7 +71,7 @@ export default function WalkDetailScreen() {
         }
       : {
           id: st?.id ?? 'unknown',
-          name: 'Opened portal',
+          name: st?.name ?? 'Saved place',
           meta: `Opened ${st?.time ?? ''}`,
           eras: st?.era ? [st.era] : ['1900'],
           blurb: 'Saved from this walk.',
@@ -97,6 +102,12 @@ export default function WalkDetailScreen() {
           <WalkMap
             height={230}
             label={`${walk.portals} ${walk.portals === 1 ? 'portal' : 'portals'} opened`}
+            route={walk.route}
+            stops={rows.map((row) => ({
+              id: row.id,
+              name: row.name,
+              coordinate: row.coordinate,
+            }))}
           />
         </Motion>
 
@@ -179,6 +190,17 @@ export default function WalkDetailScreen() {
               <Motion kind="rise" delay={200}>
                 <Text style={styles.portalBlurb}>{p.blurb}</Text>
               </Motion>
+              {st.portalId ? (
+                <Motion kind="rise" delay={240}>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => void openPortalViewer(st.portalId!)}
+                    style={styles.placeArBtn}
+                  >
+                    <Text style={styles.placeArBtnText}>Place in AR ✦</Text>
+                  </Pressable>
+                </Motion>
+              ) : null}
             </View>
           </ScrollView>
         </View>
@@ -280,4 +302,14 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: Palette.body,
   },
+  placeArBtn: {
+    height: 58,
+    marginTop: 4,
+    borderRadius: 999,
+    backgroundColor: Palette.lime,
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 10px 26px rgba(16,16,20,0.2)',
+  },
+  placeArBtnText: { fontFamily: Fonts.bodyBold, fontSize: 17, color: Palette.ink },
 });

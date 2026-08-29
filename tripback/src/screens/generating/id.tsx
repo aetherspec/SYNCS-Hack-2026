@@ -20,10 +20,11 @@ import { createHistoricalPanorama } from '@/services/images/HistoricalImageClien
 
 export default function GeneratingScreen() {
   const router = useRouter();
-  const { id, era, name } = useLocalSearchParams<{
+  const { id, era, name, mode } = useLocalSearchParams<{
     id: string;
     era?: string;
     name?: string;
+    mode?: string;
   }>();
   const place = PLACES.find((item) => item.id === id);
   const isPlace = !!place;
@@ -39,6 +40,7 @@ export default function GeneratingScreen() {
     registerDiscovery,
     activeWalk,
     discovered,
+    openPortalViewer,
   } = useAppState();
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string>();
@@ -107,6 +109,9 @@ export default function GeneratingScreen() {
           year: activeEra,
           modernUri: capture.uri,
           thenUri: result.imageDataUri,
+          placeTitle: displayName,
+          coordinate: capture.coordinate,
+          createdAt: portal.createdAt,
         });
         if (!isPlace) {
           registerDiscovery(targetId, {
@@ -116,7 +121,7 @@ export default function GeneratingScreen() {
           });
         }
         markOpened(targetId);
-        recordStop(targetId, activeEra, portal.id);
+        recordStop(targetId, activeEra, portal.id, displayName);
         setPendingCapture(undefined);
         setStep(4);
         const dest = isPlace
@@ -126,6 +131,7 @@ export default function GeneratingScreen() {
           if (cancelled) return;
           if (router.canDismiss()) router.dismissTo(dest);
           else router.replace(dest);
+          if (mode === 'ar') void openPortalViewer(portal.id);
         }, 400);
       } catch (err) {
         if (!cancelled) setError(String(err));

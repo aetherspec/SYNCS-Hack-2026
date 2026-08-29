@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import {
   ParamsCtx,
@@ -20,11 +20,12 @@ import SiteDetailScreen from '@/screens/site/id';
 import ArCaptureScreen from '@/screens/ar/id';
 import WalkDetailScreen from '@/screens/walk-detail';
 import WalksScreen from '@/screens/walks';
+import { listenForNotificationDestinations } from '@/services/notifications/NotificationService';
 
 export type { RouteName } from '@/nav';
 
-export function NavigationRoot({ initialRoute = 'onboarding' }: { initialRoute?: RouteName }) {
-  const [stack, setStack] = useState<Route[]>([{ name: initialRoute, params: {} }]);
+export function NavigationRoot({ initialHref = '/onboarding' }: { initialHref?: string }) {
+  const [stack, setStack] = useState<Route[]>(() => [parseHref(initialHref)]);
   const current = stack[stack.length - 1] ?? { name: 'map' as const, params: {} };
 
   const router = useMemo<Router>(
@@ -60,6 +61,19 @@ export function NavigationRoot({ initialRoute = 'onboarding' }: { initialRoute?:
       },
     }),
     [stack.length],
+  );
+
+  useEffect(
+    () =>
+      listenForNotificationDestinations((href) => {
+        const next = parseHref(href);
+        setStack((prev) => {
+          const active = prev[prev.length - 1];
+          if (active && sameRoute(active, next)) return [...prev.slice(0, -1), next];
+          return [...prev, next];
+        });
+      }),
+    [],
   );
 
   return (

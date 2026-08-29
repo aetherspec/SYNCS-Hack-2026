@@ -10,7 +10,7 @@ export function useOpenTimePortal(siteId: string, era: string, name: string) {
   const { location, setPendingCapture } = useAppState();
   const [busy, setBusy] = useState(false);
 
-  const open = async () => {
+  const open = async (mode: 'photo' | 'ar' = 'photo') => {
     if (!siteId || busy) return;
     setBusy(true);
     try {
@@ -25,7 +25,7 @@ export function useOpenTimePortal(siteId: string, era: string, name: string) {
       router.push(
         `/generating/${encodeURIComponent(siteId)}?era=${encodeURIComponent(
           era,
-        )}&name=${encodeURIComponent(name)}`,
+        )}&name=${encodeURIComponent(name)}&mode=${mode}`,
       );
     } catch (error) {
       console.warn('Unable to open the camera', error);

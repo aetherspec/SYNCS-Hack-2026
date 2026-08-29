@@ -25,10 +25,20 @@ export default function PassportScreen() {
       const place = PLACES.find((item) => item.id === id);
       const item = discovered[id];
       const portal = sitePortals[id];
+      const year = portal?.year ?? item?.era ?? place?.eras[0] ?? 'Historic';
+      const event = place?.events.find((candidate) => candidate.year === year);
+      const visited = portal?.createdAt
+        ? new Date(portal.createdAt).toLocaleDateString('en-AU', {
+            day: 'numeric',
+            month: 'short',
+          })
+        : 'Saved';
       return {
         id,
-        year: portal?.year ?? item?.era ?? place?.eras[0] ?? '—',
-        label: (place?.short ?? item?.name ?? 'Portal').slice(0, 14).toUpperCase(),
+        year,
+        visited,
+        label: place?.short ?? item?.name ?? portal?.placeTitle ?? 'Saved place',
+        detail: event?.title ?? 'Historical view saved',
         bg: place?.stamp ?? STAMP_BG[index % STAMP_BG.length]!,
         tilt: place?.tilt ?? TILTS[index % TILTS.length]!,
       };
@@ -72,8 +82,10 @@ export default function PassportScreen() {
                   },
                 ]}
               >
-                <Text style={styles.stampYear}>{stamp.year}</Text>
                 <Text style={styles.stampLabel}>{stamp.label}</Text>
+                <Text style={styles.stampYear}>VIEWED {stamp.year}</Text>
+                <Text numberOfLines={2} style={styles.stampDetail}>{stamp.detail}</Text>
+                <Text style={styles.stampVisited}>{stamp.visited}</Text>
               </View>
             ))}
             {Array.from({ length: lockedSlots }, (_, i) => (
@@ -156,27 +168,41 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   stamp: {
-    width: 92,
-    height: 92,
-    borderRadius: 46,
+    width: 106,
+    minHeight: 118,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 1,
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
     boxShadow: '0 6px 16px rgba(16,16,20,0.15)',
   },
-  stampYear: { fontFamily: Fonts.display, fontSize: 19, color: Palette.ink },
-  stampLabel: {
+  stampYear: {
     fontFamily: Fonts.bodyBold,
-    fontSize: 9,
-    letterSpacing: 0.5,
+    fontSize: 8,
+    letterSpacing: 0.7,
+    color: Palette.purple,
+  },
+  stampLabel: {
+    fontFamily: Fonts.displayBold,
+    fontSize: 13,
+    lineHeight: 14,
+    color: Palette.ink,
+    textAlign: 'center',
+  },
+  stampDetail: {
+    fontFamily: Fonts.bodySemi,
+    fontSize: 8.5,
+    lineHeight: 10.5,
     color: Palette.body,
     textAlign: 'center',
-    paddingHorizontal: 6,
   },
+  stampVisited: { fontFamily: Fonts.bodyBold, fontSize: 8.5, color: Palette.muted },
   locked: {
-    width: 92,
-    height: 92,
-    borderRadius: 46,
+    width: 106,
+    height: 118,
+    borderRadius: 28,
     borderWidth: 3,
     borderStyle: 'dashed',
     borderColor: '#C9C7D4',

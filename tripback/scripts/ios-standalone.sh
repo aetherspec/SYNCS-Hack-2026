@@ -11,6 +11,12 @@ if [[ ! -f .env.local ]]; then
   exit 1
 fi
 
+MODULE_PROVIDER="ios/Pods/Target Support Files/Pods-TripBack/ExpoModulesProvider.swift"
+if [[ ! -f "$MODULE_PROVIDER" ]] || ! grep -q 'TripBackARModule.self' "$MODULE_PROVIDER"; then
+  echo "TripBackAR is not linked. Run 'cd ios && pod install && cd ..' before building." >&2
+  exit 1
+fi
+
 DEVICE_JSON="$(mktemp)"
 trap 'rm -f "$DEVICE_JSON"' EXIT
 xcrun devicectl list devices --json-output "$DEVICE_JSON" >/dev/null

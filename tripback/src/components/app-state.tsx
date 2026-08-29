@@ -17,12 +17,20 @@ import type {
   EngineStatus,
   RealityPortal,
   RealityPortalPin,
+  RoutePoint,
   WalkSession,
 } from '@/domain/types';
 import { PLACES } from '@/constants/places';
 import { Palette } from '@/constants/theme';
 
-export type WalkStop = { id: string; era: string; time: string; portalId?: string };
+export type WalkStop = {
+  id: string;
+  era: string;
+  time: string;
+  portalId?: string;
+  coordinate?: Coordinate;
+  name?: string;
+};
 
 export type Walk = {
   id: string;
@@ -32,6 +40,7 @@ export type Walk = {
   mins: number;
   portals: number;
   stops: WalkStop[];
+  route: RoutePoint[];
   tints: string[];
 };
 
@@ -55,6 +64,9 @@ export type SitePortal = {
   year: string;
   modernUri?: string;
   thenUri: string;
+  placeTitle?: string;
+  coordinate?: Coordinate;
+  createdAt?: string;
 };
 
 const STOP_TINTS = [Palette.butter, Palette.blush, Palette.sky, Palette.lavender];
@@ -100,13 +112,19 @@ function stopIdForPortal(pin: RealityPortalPin): string {
   return siteIdForTitle(pin.placeTitle) ?? pin.id;
 }
 
-function sessionToWalk(session: WalkSession, pins: RealityPortalPin[]): Walk {
+function sessionToWalk(
+  session: WalkSession,
+  pins: RealityPortalPin[],
+  route: RoutePoint[] = [],
+): Walk {
   const walkPins = pins.filter((pin) => pin.walkId === session.id);
   const stops = walkPins.map((pin) => ({
     id: stopIdForPortal(pin),
     era: pin.year,
     time: fmtTime(new Date(pin.createdAt)),
     portalId: pin.id,
+    coordinate: pin.coordinate,
+    name: pin.placeTitle,
   }));
   const ended = session.endedAt ? new Date(session.endedAt).getTime() : Date.now();
   const started = new Date(session.startedAt).getTime();
@@ -118,6 +136,7 @@ function sessionToWalk(session: WalkSession, pins: RealityPortalPin[]): Walk {
     mins: Math.max(1, Math.round((ended - started) / 60000)),
     portals: walkPins.length || session.generatedImageCount || 0,
     stops,
+    route,
     tints: stops.map((_, index) => STOP_TINTS[index % STOP_TINTS.length]!),
   };
 }
@@ -139,7 +158,7 @@ type AppState = {
   activeWalk: ActiveWalk | null;
   startWalk: () => Promise<void>;
   endWalk: () => Promise<void>;
-  recordStop: (id: string, era: string, portalId?: string) => void;
+  recordStop: (id: string, era: string, portalId?: string, name?: string) => void;
   discovered: Record<string, Discovered>;
   registerDiscovery: (id: string, d: Discovered) => void;
   resetLibrary: () => Promise<void>;
@@ -176,7 +195,12 @@ export function AppStateProvider({ children }: PropsWithChildren) {
       tripBackEngine.listPortalPins(),
     ]);
     const realWalks = savedWalks.filter((walk) => !walk.isSimulated && walk.endedAt);
-    setWalks(realWalks.map((walk) => sessionToWalk(walk, pins)));
+    const routes = await Promise.all(
+      realWalks.map((walk) => tripBackEngine.listRoutePoints(walk.id)),
+    );
+    setWalks(
+      realWalks.map((walk, index) => sessionToWalk(walk, pins, routes[index] ?? [])),
+    );
 
     const nextOpened: Record<string, boolean> = {};
     const nextPortals: Record<string, SitePortal> = {};
@@ -187,6 +211,9 @@ export function AppStateProvider({ children }: PropsWithChildren) {
         portalId: pin.id,
         year: pin.year,
         thenUri: '',
+        placeTitle: pin.placeTitle,
+        coordinate: pin.coordinate,
+        createdAt: pin.createdAt,
       };
     }
     setOpened(nextOpened);
@@ -203,6 +230,8 @@ export function AppStateProvider({ children }: PropsWithChildren) {
           era: pin.year,
           time: fmtTime(new Date(pin.createdAt)),
           portalId: pin.id,
+          coordinate: pin.coordinate,
+          name: pin.placeTitle,
         })),
       });
     } else if (!engineWalk) {
@@ -226,6 +255,16 @@ export function AppStateProvider({ children }: PropsWithChildren) {
       const permission = await Location.requestForegroundPermissionsAsync();
       if (!permission.granted || cancelled) return;
       setPerms((prev) => ({ ...prev, location: true }));
+      const lastKnown = await Location.getLastKnownPositionAsync({
+        maxAge: 120_000,
+        requiredAccuracy: 250,
+      });
+      if (lastKnown && !cancelled) {
+        setLocation({
+          latitude: lastKnown.coords.latitude,
+          longitude: lastKnown.coords.longitude,
+        });
+      }
       const current = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
@@ -300,12 +339,12 @@ export function AppStateProvider({ children }: PropsWithChildren) {
           Alert.alert('Couldn’t end the walk', String(error));
         }
       },
-      recordStop: (id, era, portalId) =>
+      recordStop: (id, era, portalId, name) =>
         setActiveWalk((prev) => {
           if (!prev || prev.stops.some((stop) => stop.id === id)) return prev;
           return {
             ...prev,
-            stops: [...prev.stops, { id, era, time: fmtTime(new Date()), portalId }],
+            stops: [...prev.stops, { id, era, time: fmtTime(new Date()), portalId, name }],
           };
         }),
       discovered,
@@ -374,4 +413,3 @@ export function metersFromUser(location: Coordinate | undefined, geo: [number, n
     }),
   );
 }
-

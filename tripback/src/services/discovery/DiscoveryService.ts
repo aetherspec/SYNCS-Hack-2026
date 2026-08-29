@@ -30,16 +30,19 @@ function uniqueCitations(citations: Discovery['citations']): Discovery['citation
 
 export async function listNearbyPlaces(
   origin: Coordinate,
+  options?: { radiusMetres?: number; limit?: number },
 ): Promise<StoryCandidate[]> {
+  const radius = options?.radiusMetres ?? tripBackConfig.searchRadiusMetres;
+  const limit = options?.limit ?? 12;
   const settled = await Promise.allSettled([
-    fetchWikipediaCandidates(origin),
-    fetchHeritageCandidates(origin),
+    fetchWikipediaCandidates(origin, radius, Math.min(50, limit)),
+    fetchHeritageCandidates(origin, radius),
   ]);
   const candidates = deduplicateCandidates(
     settled.flatMap((result) => (result.status === 'fulfilled' ? result.value : [])),
   );
 
-  const nearest = candidates.slice(0, 12);
+  const nearest = candidates.slice(0, limit);
   const enriched = await Promise.all(
     nearest.map(async (candidate, index) => {
       if (candidate.imageUrl || index >= 8) return candidate;

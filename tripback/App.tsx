@@ -20,7 +20,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { PortalViewerModal } from './src/alternateReality/PortalViewerModal';
 import { AppStateProvider, useAppState } from './src/components/app-state';
-import { NavigationRoot, type RouteName } from './src/navigation';
+import { NavigationRoot } from './src/navigation';
+import { consumeInitialNotificationDestination } from './src/services/notifications/NotificationService';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -46,24 +47,27 @@ export default function App() {
     Figtree_600SemiBold,
     Figtree_700Bold,
   });
-  const [initialRoute, setInitialRoute] = useState<RouteName>();
+  const [initialHref, setInitialHref] = useState<string>();
 
   useEffect(() => {
-    void Location.getForegroundPermissionsAsync().then((permission) => {
-      setInitialRoute(permission.granted ? 'map' : 'onboarding');
+    void Promise.all([
+      Location.getForegroundPermissionsAsync(),
+      consumeInitialNotificationDestination(),
+    ]).then(([permission, notificationHref]) => {
+      setInitialHref(notificationHref ?? (permission.granted ? '/map' : '/onboarding'));
     });
   }, []);
 
   useEffect(() => {
-    if (fontsLoaded && initialRoute) void SplashScreen.hideAsync();
-  }, [fontsLoaded, initialRoute]);
+    if (fontsLoaded && initialHref) void SplashScreen.hideAsync();
+  }, [fontsLoaded, initialHref]);
 
-  if (!fontsLoaded || !initialRoute) return null;
+  if (!fontsLoaded || !initialHref) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AppStateProvider>
-        <NavigationRoot initialRoute={initialRoute} />
+        <NavigationRoot initialHref={initialHref} />
         <PortalLayer />
         <StatusBar style="dark" />
       </AppStateProvider>

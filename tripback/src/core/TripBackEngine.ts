@@ -4,6 +4,7 @@ import type {
   GeneratedImage,
   RealityPortal,
   RealityPortalPin,
+  RoutePoint,
   WalkDetail,
   WalkSession,
 } from '../domain/types';
@@ -119,6 +120,10 @@ class TripBackEngine {
 
   async getWalkDetail(walkId: string): Promise<WalkDetail | null> {
     return tripBackDatabase.getWalkDetail(walkId);
+  }
+
+  async listRoutePoints(walkId: string): Promise<RoutePoint[]> {
+    return tripBackDatabase.listRoutePoints(walkId);
   }
 
   async saveGeneratedImage(image: {

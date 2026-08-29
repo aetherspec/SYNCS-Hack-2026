@@ -24,6 +24,7 @@ const endpoint =
 
 export async function fetchHeritageCandidates(
   origin: Coordinate,
+  radiusMetres: number = tripBackConfig.searchRadiusMetres,
 ): Promise<StoryCandidate[]> {
   const params = new URLSearchParams({
     f: 'json',
@@ -31,7 +32,7 @@ export async function fetchHeritageCandidates(
     geometryType: 'esriGeometryPoint',
     inSR: '4326',
     spatialRel: 'esriSpatialRelIntersects',
-    distance: String(tripBackConfig.searchRadiusMetres),
+    distance: String(Math.min(10_000, Math.max(10, Math.round(radiusMetres)))),
     units: 'esriSRUnit_Meter',
     outFields: 'HOITEMID,ITEMNAME,ADDRESS,LGA,LISTINGNO,Long_,Lat',
     returnGeometry: 'false',

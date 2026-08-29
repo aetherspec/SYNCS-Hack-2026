@@ -112,10 +112,6 @@ export default function SettingsScreen() {
           </Pressable>
         </Motion>
 
-        <Motion kind="rise" delay={280}><Text style={styles.footnote}>
-          Reconstructions are generated from archival photography. Sources:
-          Heritage NSW, NSW State Archives, Wikipedia — always on. TripBack v0.1
-        </Text></Motion>
       </ScrollView>
       <TabBar active="Settings" />
     </View>
@@ -174,11 +170,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   clear: { fontFamily: Fonts.bodyBold, fontSize: 14, color: Palette.purple },
-  footnote: {
-    fontFamily: Fonts.body,
-    fontSize: 12,
-    lineHeight: 18,
-    color: Palette.muted,
-    paddingHorizontal: 6,
-  },
 });

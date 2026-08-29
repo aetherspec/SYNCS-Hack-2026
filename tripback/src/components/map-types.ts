@@ -12,7 +12,13 @@ export type MapDiscovery = {
   geo: [number, number];
 };
 
-export type MapLookAt = [number, number] | null;
+export type MapViewport = {
+  center: [number, number];
+  latitudeDelta: number;
+  longitudeDelta: number;
+};
+
+export type MapLookAt = MapViewport | null;
 
 export type SiteMapViewProps = {
   zoom?: number;
@@ -20,6 +26,6 @@ export type SiteMapViewProps = {
   onSelect: (id: string) => void;
   discoveries?: MapDiscovery[];
   onSelectDiscovery?: (id: string, title: string) => void;
-  /** Map-camera centre while browsing. `null` means follow GPS again. */
-  onLookAt?: (lngLat: MapLookAt) => void;
+  /** Visible map area while browsing. `null` means follow GPS again. */
+  onLookAt?: (viewport: MapLookAt) => void;
 };

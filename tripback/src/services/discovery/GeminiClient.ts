@@ -1,6 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 
 import { tripBackConfig } from '../../config';
+import type { EraEvent } from '../../domain/eras';
 import type {
   Coordinate,
   Discovery,
@@ -28,6 +29,130 @@ type GeminiResult = {
   story: GeneratedStory;
   groundingCitations: SourceCitation[];
 };
+
+const heritageSummarySchema = {
+  type: 'object',
+  properties: {
+    description: { type: 'string' },
+    summary: { type: 'string' },
+    events: {
+      type: 'array',
+      maxItems: 3,
+      items: {
+        type: 'object',
+        properties: {
+          year: { type: 'string', pattern: '^(17|18|19|20)\\d{2}$' },
+          title: { type: 'string' },
+          detail: { type: 'string' },
+        },
+        required: ['year', 'title', 'detail'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['description', 'summary', 'events'],
+  additionalProperties: false,
+};
+
+export type HeritageSummary = {
+  description: string;
+  summary: string;
+  events: EraEvent[];
+};
+
+const heritageSummaryRequests = new Map<string, Promise<HeritageSummary>>();
+
+/**
+ * Researches a Heritage NSW-only map result so its detail page is useful even
+ * when there is no corresponding Wikipedia article. Requests are cached for
+ * the lifetime of the app to avoid spending quota after GPS updates/rerenders.
+ */
+export function generateHeritageSummary(
+  title: string,
+  heritageItemId: string,
+  origin?: Coordinate,
+): Promise<HeritageSummary> {
+  const cacheKey = `${heritageItemId}:${title}`;
+  const existing = heritageSummaryRequests.get(cacheKey);
+  if (existing) return existing;
+
+  const request = generateHeritageSummaryUncached(title, heritageItemId, origin).catch(error => {
+    heritageSummaryRequests.delete(cacheKey);
+    throw error;
+  });
+  heritageSummaryRequests.set(cacheKey, request);
+  return request;
+}
+
+async function generateHeritageSummaryUncached(
+  title: string,
+  heritageItemId: string,
+  origin?: Coordinate,
+): Promise<HeritageSummary> {
+  if (!tripBackConfig.geminiApiKey) {
+    throw new Error('Missing EXPO_PUBLIC_GEMINI_API_KEY in .env.local');
+  }
+
+  const ai = new GoogleGenAI({ apiKey: tripBackConfig.geminiApiKey });
+  const locationHint = origin
+    ? `The user opened it near latitude ${origin.latitude}, longitude ${origin.longitude}.`
+    : 'The place is in New South Wales, Australia.';
+  const heritageUrl =
+    `https://www.environment.nsw.gov.au/heritageapp/` +
+    `ViewHeritageItemDetails.aspx?ID=${encodeURIComponent(heritageItemId)}`;
+
+  const response = await ai.models.generateContent({
+    model: tripBackConfig.geminiModel,
+    contents: `Research this exact historical place using Google Search:
+
+Place name: ${title}
+Heritage NSW item ID: ${heritageItemId}
+Official Heritage NSW record: ${heritageUrl}
+${locationHint}
+
+Write a lively but factual 90 to 150 word overview explaining what the place was, who used it, and why it matters. Provide a short place-type description and up to three genuinely significant dated events suitable for reconstruction choices. Each event detail must explain what happened in that year. Prefer construction, opening, rebuilding, major use changes, or a documented human event. Do not use the date it was placed on a heritage register unless that listing is itself historically significant. Combine a construction range into one event rather than returning adjacent duplicate years. Never invent or guess a date. If no exact dated event can be verified, return an empty events array.`,
+    config: {
+      httpOptions: { timeout: 20_000 },
+      systemInstruction:
+        'You are TripBack, a careful NSW local-history editor. Use the exact place and official record supplied. Accuracy is more important than filling every field.',
+      tools: [{ googleSearch: {} }],
+      responseMimeType: 'application/json',
+      responseJsonSchema: heritageSummarySchema,
+      temperature: 0.15,
+      maxOutputTokens: 1_200,
+    },
+  });
+
+  if (!response.text) throw new Error('Gemini returned no heritage summary');
+  const generated = JSON.parse(response.text) as Partial<HeritageSummary>;
+  const summary = generated.summary?.trim();
+  if (!summary) throw new Error('Gemini heritage summary was incomplete');
+
+  const currentYear = new Date().getFullYear();
+  const events = Array.isArray(generated.events)
+    ? generated.events
+        .filter(
+          event =>
+            /^(17|18|19|20)\d{2}$/.test(event?.year ?? '') &&
+            Number(event.year) <= currentYear &&
+            event.title?.trim() &&
+            event.detail?.trim(),
+        )
+        .map(event => ({
+          year: event.year,
+          title: event.title.trim(),
+          detail: event.detail.trim(),
+        }))
+        .filter((event, index, all) => all.findIndex(item => item.year === event.year) === index)
+        .slice(0, 3)
+    : [];
+
+  return {
+    description: generated.description?.trim() || 'NSW heritage place',
+    summary,
+    events,
+  };
+}
 
 export async function generateGroundedStory(
   origin: Coordinate,
