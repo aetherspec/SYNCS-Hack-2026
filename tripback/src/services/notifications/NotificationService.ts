@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 
 import type { Discovery } from '../../domain/types';
+import type { Place } from '../../constants/places';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -35,10 +36,25 @@ export async function notifyDiscovery(discovery: Discovery): Promise<void> {
   });
 }
 
+export async function notifyDemoPlace(place: Place): Promise<void> {
+  const event = place.events[0];
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: `TripBack nearby · ${event?.year ?? place.eras[0]}`,
+      body: `${place.name}: ${event?.title ?? 'Something happened here'}. Tap to explore.`,
+      sound: 'default',
+      data: { siteId: place.id },
+    },
+    trigger: null,
+  });
+}
+
 export function notificationDestination(
   response?: Notifications.NotificationResponse | null,
 ): string | undefined {
   const data = response?.notification.request.content.data;
+  const siteId = typeof data?.siteId === 'string' ? data.siteId : undefined;
+  if (siteId) return `/site/${encodeURIComponent(siteId)}`;
   const candidateId = typeof data?.candidateId === 'string' ? data.candidateId : undefined;
   if (!candidateId) return undefined;
   const placeTitle = typeof data?.placeTitle === 'string' ? data.placeTitle : 'Discovered place';

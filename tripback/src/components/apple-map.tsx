@@ -168,26 +168,16 @@ export const AppleMap = forwardRef<SiteMapHandle, SiteMapViewProps>(function App
           <Marker
             key={place.id}
             coordinate={lngLatToCoord(place.geo)}
-            anchor={{ x: 0.5, y: 1 }}
+            anchor={{ x: 0.5, y: 0.5 }}
             onPress={() => onSelect(place.id)}
           >
-            <View style={styles.pin}>
-              <View
-                style={[
-                  styles.pill,
-                  { backgroundColor: isOpened ? Palette.lime : Palette.purple },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.pillText,
-                    { color: isOpened ? Palette.ink : Palette.white },
-                  ]}
-                >
-                  {place.eras[0]}
-                </Text>
-              </View>
-              <View style={styles.stem} />
+            <View
+              style={[
+                styles.curatedMarker,
+                isOpened && styles.curatedMarkerOpened,
+              ]}
+            >
+              <View style={[styles.curatedCore, isOpened && styles.curatedCoreOpened]} />
             </View>
           </Marker>
         );
@@ -219,20 +209,27 @@ const styles = StyleSheet.create({
     backgroundColor: Palette.lavender,
   },
   locatingText: { fontFamily: Fonts.bodyBold, fontSize: 14, color: Palette.inkSoft },
-  pin: { alignItems: 'center' },
-  pill: {
-    paddingVertical: 7,
-    paddingHorizontal: 14,
-    borderRadius: 999,
-    borderWidth: 3,
-    borderColor: Palette.white,
-  },
-  pillText: { fontFamily: Fonts.displayBold, fontSize: 14 },
-  stem: {
-    width: 3,
-    height: 10,
+  curatedMarker: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: Palette.white,
+    borderWidth: 4,
+    borderColor: Palette.purple,
   },
+  curatedMarkerOpened: {
+    borderColor: Palette.ink,
+    backgroundColor: Palette.lime,
+  },
+  curatedCore: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: Palette.purple,
+  },
+  curatedCoreOpened: { backgroundColor: Palette.ink },
   mini: {
     width: 16,
     height: 16,

@@ -13,6 +13,7 @@ import { Fonts, Palette } from '@/constants/theme';
 
 const TABS = [
   { label: 'Map', href: '/map' },
+  { label: 'First Nations', href: '/first-nations' },
   { label: 'Walks', href: '/walks' },
   { label: 'Passport', href: '/passport' },
   { label: 'Settings', href: '/settings' },
@@ -54,7 +55,12 @@ export function TabBar({ active }: { active: TabName }) {
           onPress={() => router.replace(t.href)}
           style={[styles.tab, active === t.label && styles.tabActive]}
         >
-          <Text style={[styles.label, active === t.label && styles.labelActive]}>
+          <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.72}
+            style={[styles.label, active === t.label && styles.labelActive]}
+          >
             {t.label}
           </Text>
         </Pressable>
@@ -66,12 +72,12 @@ export function TabBar({ active }: { active: TabName }) {
 const styles = StyleSheet.create({
   bar: {
     position: 'absolute',
-    left: 20,
-    right: 20,
+    left: 12,
+    right: 12,
     bottom: 24,
     flexDirection: 'row',
-    gap: 4,
-    padding: 8,
+    gap: 2,
+    padding: 7,
     borderRadius: 999,
     backgroundColor: Palette.ink,
     boxShadow: '0 10px 30px rgba(16,16,20,0.28)',
@@ -87,7 +93,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: Fonts.bodyBold,
-    fontSize: 13,
+    fontSize: 12,
     color: '#B9B9C4',
   },
   labelActive: {

@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect } from 'react';
 export type RouteName =
   | 'onboarding'
   | 'map'
+  | 'first-nations'
   | 'walks'
   | 'walk-detail'
   | 'passport'
@@ -31,7 +32,13 @@ export type Router = {
 export const RouterCtx = createContext<Router | null>(null);
 export const ParamsCtx = createContext<Record<string, string>>({});
 
-export const TAB_ROUTES = new Set<RouteName>(['map', 'walks', 'passport', 'settings']);
+export const TAB_ROUTES = new Set<RouteName>([
+  'map',
+  'first-nations',
+  'walks',
+  'passport',
+  'settings',
+]);
 
 export function parseHref(href: Href): Route {
   if (typeof href !== 'string') {

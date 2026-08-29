@@ -13,6 +13,7 @@ import {
 import DiscoverScreen from '@/screens/discover/id';
 import GeneratingScreen from '@/screens/generating/id';
 import MapScreen from '@/screens/map';
+import FirstNationsScreen from '@/screens/first-nations';
 import OnboardingScreen from '@/screens/onboarding';
 import PassportScreen from '@/screens/passport';
 import SettingsScreen from '@/screens/settings';
@@ -91,6 +92,8 @@ function Screen({ name }: { name: RouteName }) {
       return <OnboardingScreen />;
     case 'walks':
       return <WalksScreen />;
+    case 'first-nations':
+      return <FirstNationsScreen />;
     case 'walk-detail':
       return <WalkDetailScreen />;
     case 'passport':

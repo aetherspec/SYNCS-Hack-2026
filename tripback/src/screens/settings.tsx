@@ -1,10 +1,13 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { useRouter } from '@/nav';
+
 import { Motion } from '@/components/motion';
 
 import { useAppState } from '@/components/app-state';
 import { TabBar } from '@/components/tab-bar';
 import { Fonts, Palette } from '@/constants/theme';
+import { requestNotificationPermission } from '@/services/notifications/NotificationService';
 
 const RADII = ['50 m', '100 m', '250 m'];
 
@@ -20,6 +23,7 @@ function Toggle({ on, onPress }: { on: boolean; onPress: () => void }) {
 }
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const {
     radius,
     setRadius,
@@ -95,8 +99,30 @@ export default function SettingsScreen() {
           </View>
         </Motion>
 
+        <Motion kind="rise" delay={200} style={[styles.card, styles.demoCard]}>
+          <View style={styles.demoIcon}>
+            <Text style={styles.demoIconText}>▶</Text>
+          </View>
+          <View style={styles.demoCopy}>
+            <Text style={[styles.cardTitle, { color: Palette.white }]}>Replay demo walk</Text>
+            <Text style={styles.demoSub}>
+              Follow The Rocks route and preview the nearby notification experience.
+            </Text>
+          </View>
+          <Pressable
+            style={styles.demoButton}
+            onPress={() => {
+              void requestNotificationPermission().finally(() => {
+                router.replace('/map?demo=1');
+              });
+            }}
+          >
+            <Text style={styles.demoButtonText}>Start</Text>
+          </Pressable>
+        </Motion>
+
         <Motion
-          kind="rise" delay={220}
+          kind="rise" delay={240}
           style={[styles.card, styles.library]}
         >
           <Text style={{ fontSize: 19 }}>🗄️</Text>
@@ -170,4 +196,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   clear: { fontFamily: Fonts.bodyBold, fontSize: 14, color: Palette.purple },
+  demoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: Palette.ink,
+  },
+  demoIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Palette.lime,
+  },
+  demoIconText: { fontFamily: Fonts.display, fontSize: 14, color: Palette.ink },
+  demoCopy: { flex: 1, gap: 2 },
+  demoSub: { fontFamily: Fonts.body, fontSize: 11.5, lineHeight: 15, color: '#C8C7D0' },
+  demoButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 999,
+    backgroundColor: Palette.lime,
+  },
+  demoButtonText: { fontFamily: Fonts.bodyBold, fontSize: 12, color: Palette.ink },
 });

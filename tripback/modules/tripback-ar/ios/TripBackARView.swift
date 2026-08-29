@@ -153,9 +153,6 @@ final class TripBackARView: ExpoView, ARSCNViewDelegate, ARSessionDelegate {
       // uses x/y, so rotate its local y axis onto the plane's z tangent axis.
       let contentNode = SCNNode(geometry: plane)
       contentNode.eulerAngles.x = .pi / 2
-      // The vertical raycast basis presents SceneKit's image texture inverted.
-      // Rotate the portal in its own plane so the generated scene is upright.
-      contentNode.eulerAngles.z = .pi
       anchorNode.addChildNode(contentNode)
       sceneView.scene.rootNode.addChildNode(anchorNode)
       portalNode = anchorNode

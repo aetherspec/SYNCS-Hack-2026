@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { useRouter } from '@/nav';
+import { useLocalSearchParams, useRouter } from '@/nav';
 
 import { useAppState } from '@/components/app-state';
 import { Motion } from '@/components/motion';
@@ -12,9 +12,11 @@ import { formatMeters, haversine, useNearby } from '@/components/use-nearby';
 import { AHEAD_COORDS, DONE_COORDS, tidy } from '@/components/walk-route';
 import { PLACES, USER_GEO, findPlace } from '@/constants/places';
 import { Fonts, Palette } from '@/constants/theme';
+import { notifyDemoPlace } from '@/services/notifications/NotificationService';
 
 export default function MapScreen() {
   const router = useRouter();
+  const { demo } = useLocalSearchParams<{ demo?: string }>();
   const { opened, activeWalk, startWalk, endWalk, location } = useAppState();
   const mapCtl = useRef<SiteMapHandle>(null);
   const [lookAt, setLookAt] = useState<MapViewport | null>(null);
@@ -69,6 +71,8 @@ export default function MapScreen() {
   const [demoSite, setDemoSite] = useState<string | null>(null);
   const demoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const demoIdx = useRef(0);
+  const demoNotified = useRef(new Set<string>());
+  const demoRequestStarted = useRef(false);
 
   const stopDemo = () => {
     if (demoTimer.current) clearInterval(demoTimer.current);
@@ -82,6 +86,7 @@ export default function MapScreen() {
     if (demoTimer.current) return;
     setDemoOn(true);
     demoIdx.current = 0;
+    demoNotified.current.clear();
     demoTimer.current = setInterval(() => {
       const i = demoIdx.current;
       if (i >= demoRoute.length) {
@@ -96,22 +101,38 @@ export default function MapScreen() {
       mapCtl.current?.setUser(pos, true);
       const near = PLACES.find(pl => haversine(pos, pl.geo) < 90);
       setDemoSite(near ? near.id : null);
+      if (near && !demoNotified.current.has(near.id)) {
+        demoNotified.current.add(near.id);
+        void notifyDemoPlace(near);
+      }
       demoIdx.current = i + 1;
     }, 120);
   };
+  useEffect(() => {
+    if (demo !== '1' || demoRequestStarted.current) return;
+    demoRequestStarted.current = true;
+    const timer = setTimeout(startDemo, 350);
+    return () => clearTimeout(timer);
+    // Start exactly once for this map mount; the replay owns its timer after that.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [demo]);
   useEffect(() => stopDemo, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // The nudge points at the nearest portal you haven't opened yet — or, in
+  // The nudge points at the nearest genuinely close portal you haven't opened
+  // yet — or, in
   // demo mode, at whichever site the dot is walking past right now.
+  const userGeo: [number, number] = location
+    ? [location.longitude, location.latitude]
+    : USER_GEO;
   const closestCurated = [...PLACES]
     .filter((place) => !opened[place.id])
-    .sort((a, b) => haversine(browseGeo, a.geo) - haversine(browseGeo, b.geo))[0];
+    .sort((a, b) => haversine(userGeo, a.geo) - haversine(userGeo, b.geo))[0];
   const target = demoSite
     ? findPlace(demoSite)
-    : closestCurated && haversine(browseGeo, closestCurated.geo) <= 3_000
+    : closestCurated && haversine(userGeo, closestCurated.geo) <= 250
       ? closestCurated
       : undefined;
-  const targetMeters = target ? formatMeters(haversine(browseGeo, target.geo)) : '';
+  const targetMeters = target ? formatMeters(haversine(userGeo, target.geo)) : '';
   const targetArea = target ? target.dist.split(' · ')[1] : '';
   const targetRange = target
     ? `${target.eras[0]} – ${target.eras[target.eras.length - 1]}`
@@ -187,14 +208,9 @@ export default function MapScreen() {
             </Pressable>
           </View>
         ) : (
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Pressable onPress={() => void startWalk()} style={styles.startWalkBtn}>
-              <Text style={styles.startWalkBtnText}>▶ Start a walk</Text>
-            </Pressable>
-            <Pressable onPress={startDemo} style={styles.demoBtn}>
-              <Text style={styles.demoBtnText}>Demo</Text>
-            </Pressable>
-          </View>
+          <Pressable onPress={() => void startWalk()} style={styles.startWalkBtn}>
+            <Text style={styles.startWalkBtnText}>▶ Start a walk</Text>
+          </Pressable>
         )}
       </View>
 
@@ -355,14 +371,6 @@ const styles = StyleSheet.create({
     boxShadow: '0 8px 22px rgba(16,16,20,0.25)',
   },
   startWalkBtnText: { fontFamily: Fonts.displayBold, fontSize: 15, color: Palette.lime },
-  demoBtn: {
-    backgroundColor: Palette.white,
-    borderRadius: 999,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    boxShadow: '0 8px 22px rgba(16,16,20,0.18)',
-  },
-  demoBtnText: { fontFamily: Fonts.displayBold, fontSize: 15, color: Palette.purple },
   walkActive: {
     flexDirection: 'row',
     alignItems: 'center',
