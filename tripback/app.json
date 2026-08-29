@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "TripBack",
+    "slug": "tripback",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.syncshack.tripback"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "TripBack uses your location during a walk to uncover nearby history.",
+          "locationAlwaysAndWhenInUsePermission": "TripBack uses your location during an active walk to notify you about nearby history, even when the screen is locked.",
+          "isIosBackgroundLocationEnabled": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "sounds": []
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "TripBack uses the camera to reimagine the scene around you in a chosen historical era.",
+          "photosPermission": "TripBack can use a photo you choose to create a historical interpretation of the scene.",
+          "microphonePermission": false
+        }
+      ]
+    ]
+  }
+}
