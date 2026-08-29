@@ -68,11 +68,29 @@ export type GeneratedImage = {
   createdAt: string;
 };
 
+export type RealityPortalPin = {
+  id: string;
+  walkId?: string;
+  placeTitle?: string;
+  year: string;
+  coordinate: Coordinate;
+  originHeading: number;
+  createdAt: string;
+};
+
+export type RealityPortal = RealityPortalPin & {
+  modernImageDataUri?: string;
+  generatedImageDataUri: string;
+  generatedBase64?: string;
+  generatedMimeType?: string;
+};
+
 export type WalkDetail = {
   walk: WalkSession;
   route: RoutePoint[];
   discoveries: Discovery[];
   generatedImages: GeneratedImage[];
+  portals: RealityPortal[];
 };
 
 export type RoutePoint = Coordinate & {

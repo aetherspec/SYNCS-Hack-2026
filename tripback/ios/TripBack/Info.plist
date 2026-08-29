@@ -45,7 +45,7 @@
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>TripBack uses the camera to reimagine the scene around you in a chosen historical era.</string>
+	<string>TripBack uses the camera to capture a street view and to look around a historical interpretation pinned to that spot.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>TripBack uses your location during an active walk to notify you about nearby history, even when the screen is locked.</string>
 	<key>NSLocationAlwaysUsageDescription</key>

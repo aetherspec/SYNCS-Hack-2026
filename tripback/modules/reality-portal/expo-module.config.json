@@ -1,0 +1,7 @@
+{
+  "platforms": ["apple"],
+  "apple": {
+    "modules": ["RealityPortalModule"],
+    "podspecPath": "ios/RealityPortal.podspec"
+  }
+}

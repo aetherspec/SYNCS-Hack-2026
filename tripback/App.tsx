@@ -19,17 +19,21 @@ import { StatusBar } from 'expo-status-bar';
 import MapView, { Marker, Polyline, type Region } from 'react-native-maps';
 
 import { tripBackEngine } from './src/core/TripBackEngine';
-import { distanceMetres } from './src/domain/geo';
+import { distanceMetres, PORTAL_PROXIMITY_METRES } from './src/domain/geo';
 import type {
   Coordinate,
   Discovery,
   EngineStatus,
+  RealityPortal,
+  RealityPortalPin,
   StoryCandidate,
   WalkDetail,
   WalkSession,
 } from './src/domain/types';
 import { listNearbyPlaces } from './src/services/discovery/DiscoveryService';
 import { createHistoricalView } from './src/services/images/HistoricalImageClient';
+import { AlternateRealityModal } from './src/alternateReality/AlternateRealityModal';
+import { PortalViewerModal } from './src/alternateReality/PortalViewerModal';
 
 const sydneyCentre: Coordinate = { latitude: -33.856784, longitude: 151.215297 };
 const initialRegion: Region = {
@@ -54,15 +58,19 @@ export default function App() {
   const [nearbyLoading, setNearbyLoading] = useState(true);
   const [discoveries, setDiscoveries] = useState<Discovery[]>([]);
   const [walks, setWalks] = useState<WalkSession[]>([]);
+  const [portals, setPortals] = useState<RealityPortalPin[]>([]);
+  const [openPortal, setOpenPortal] = useState<RealityPortal>();
   const [busyAction, setBusyAction] = useState<string>();
 
   const refreshHistory = useCallback(async () => {
-    const [savedDiscoveries, savedWalks] = await Promise.all([
+    const [savedDiscoveries, savedWalks, savedPortals] = await Promise.all([
       tripBackEngine.listDiscoveries(),
       tripBackEngine.listWalks(),
+      tripBackEngine.listPortalPins(),
     ]);
     setDiscoveries(savedDiscoveries);
     setWalks(savedWalks.filter((walk) => !walk.isSimulated));
+    setPortals(savedPortals);
   }, []);
 
   const loadNearby = useCallback(async (coordinate: Coordinate, force = false) => {
@@ -205,10 +213,29 @@ export default function App() {
           onDemo={() =>
             void perform('Replaying Sydney…', () => tripBackEngine.runSimulation())
           }
+          portals={portals}
+          onOpenPortal={(pin) => {
+            void tripBackEngine.getPortal(pin.id).then((portal) => {
+              if (portal) setOpenPortal(portal);
+            });
+          }}
+          onPortalCreated={(portal) => {
+            void refreshHistory();
+            setOpenPortal(portal);
+          }}
         />
       ) : (
         <HistoryScreen discoveries={discoveries} walks={walks} />
       )}
+
+      {openPortal ? (
+        <PortalViewerModal
+          visible
+          portal={openPortal}
+          currentLocation={currentLocation}
+          onClose={() => setOpenPortal(undefined)}
+        />
+      ) : null}
 
       <View style={styles.tabBar}>
         <TabButton icon="⌖" label="Explore" selected={tab === 'explore'} onPress={() => setTab('explore')} />
@@ -233,6 +260,9 @@ function ExploreScreen({
   onStartWalk,
   onStopWalk,
   onDemo,
+  portals,
+  onOpenPortal,
+  onPortalCreated,
 }: {
   mapRef: React.RefObject<MapView | null>;
   locationAllowed: boolean;
@@ -247,8 +277,15 @@ function ExploreScreen({
   onStartWalk: () => void;
   onStopWalk: () => void;
   onDemo: () => void;
+  portals: RealityPortalPin[];
+  onOpenPortal: (pin: RealityPortalPin) => void;
+  onPortalCreated: (portal: RealityPortal) => void;
 }) {
   const [timeCameraOpen, setTimeCameraOpen] = useState(false);
+  const [alternateRealityOpen, setAlternateRealityOpen] = useState(false);
+  const nearbyPortal = currentLocation
+    ? portals.find((portal) => distanceMetres(currentLocation, portal.coordinate) <= PORTAL_PROXIMITY_METRES)
+    : undefined;
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.exploreContent}>
@@ -270,6 +307,16 @@ function ExploreScreen({
               title={place.title}
               description={`${formatDistance(place.distanceMetres)} away`}
               pinColor="#b34a32"
+            />
+          ))}
+          {portals.map((portal) => (
+            <Marker
+              key={portal.id}
+              coordinate={portal.coordinate}
+              title={portal.placeTitle ? `${portal.placeTitle} · ${portal.year}` : `Alternate Reality · ${portal.year}`}
+              description="Look around this pinned year"
+              pinColor="#5a3d8c"
+              onPress={() => onOpenPortal(portal)}
             />
           ))}
         </MapView>
@@ -320,6 +367,17 @@ function ExploreScreen({
           </View>
         ) : null}
 
+        {nearbyPortal ? (
+          <Pressable
+            onPress={() => onOpenPortal(nearbyPortal)}
+            style={styles.portalBanner}
+          >
+            <Text style={styles.portalBannerLabel}>ALTERNATE REALITY · {nearbyPortal.year}</Text>
+            <Text style={styles.discoveryTitle}>{nearbyPortal.placeTitle ?? 'Pinned streetscape'}</Text>
+            <Text style={styles.discoveryHook}>Look around this year — turn or take a few steps.</Text>
+          </Pressable>
+        ) : null}
+
         <Pressable
           onPress={() => setTimeCameraOpen(true)}
           style={({ pressed }) => [styles.timeCameraButton, pressed && styles.buttonDimmed]}
@@ -330,6 +388,18 @@ function ExploreScreen({
             <Text style={styles.timeCameraTitle}>See this view in the past</Text>
           </View>
           <Text style={styles.timeCameraArrow}>›</Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => setAlternateRealityOpen(true)}
+          style={({ pressed }) => [styles.alternateButton, pressed && styles.buttonDimmed]}
+        >
+          <View style={styles.alternateIcon}><Text style={styles.timeCameraIconText}>▣</Text></View>
+          <View style={styles.timeCameraCopy}>
+            <Text style={styles.alternateEyebrow}>ALTERNATE REALITY</Text>
+            <Text style={styles.alternateTitle}>Pin a year to this spot</Text>
+          </View>
+          <Text style={styles.alternateArrow}>›</Text>
         </Pressable>
 
         <View style={styles.walkRow}>
@@ -359,6 +429,17 @@ function ExploreScreen({
         places={nearby}
         walkId={status.activeWalk?.id}
         onClose={() => setTimeCameraOpen(false)}
+      />
+      <AlternateRealityModal
+        visible={alternateRealityOpen}
+        coordinate={currentLocation ?? sydneyCentre}
+        places={nearby}
+        walkId={status.activeWalk?.id}
+        onClose={() => setAlternateRealityOpen(false)}
+        onCreated={(portal) => {
+          setAlternateRealityOpen(false);
+          onPortalCreated(portal);
+        }}
       />
     </ScrollView>
   );
@@ -694,6 +775,7 @@ function WalkDetailScreen({ walk, onClose }: { walk: WalkSession; onClose: () =>
   const mapRef = useRef<MapView>(null);
   const [detail, setDetail] = useState<WalkDetail>();
   const [loading, setLoading] = useState(true);
+  const [openPortal, setOpenPortal] = useState<RealityPortal>();
 
   useEffect(() => {
     let cancelled = false;
@@ -713,6 +795,7 @@ function WalkDetailScreen({ walk, onClose }: { walk: WalkSession; onClose: () =>
       ...detail.route,
       ...detail.discoveries.map((discovery) => discovery.coordinate),
       ...detail.generatedImages.map((image) => image.coordinate),
+      ...detail.portals.map((portal) => portal.coordinate),
     ];
     if (coordinates.length === 0) return;
     mapRef.current?.fitToCoordinates(coordinates, {
@@ -724,6 +807,7 @@ function WalkDetailScreen({ walk, onClose }: { walk: WalkSession; onClose: () =>
   const route = detail?.route ?? [];
   const spots = detail?.discoveries ?? [];
   const generated = detail?.generatedImages ?? [];
+  const walkPortals = detail?.portals ?? [];
 
   return (
     <ScrollView style={styles.historyScreen} contentContainerStyle={styles.walkDetailContent}>
@@ -736,6 +820,7 @@ function WalkDetailScreen({ walk, onClose }: { walk: WalkSession; onClose: () =>
         {formatWalkDistance(walk.distanceMetres)}
         {spots.length ? ` · ${spots.length} place${spots.length === 1 ? '' : 's'}` : ''}
         {generated.length ? ` · ${generated.length} Time Camera` : ''}
+        {walkPortals.length ? ` · ${walkPortals.length} Alternate Reality` : ''}
       </Text>
       {walk.summary ? <Text style={styles.walkSummary}>{walk.summary}</Text> : null}
 
@@ -764,6 +849,15 @@ function WalkDetailScreen({ walk, onClose }: { walk: WalkSession; onClose: () =>
               coordinate={image.coordinate}
               title={image.placeTitle ? `${image.placeTitle} · ${image.year}` : `Time Camera · ${image.year}`}
               pinColor="#2c6b8b"
+            />
+          ))}
+          {walkPortals.map((portal) => (
+            <Marker
+              key={portal.id}
+              coordinate={portal.coordinate}
+              title={portal.placeTitle ? `${portal.placeTitle} · ${portal.year}` : `Alternate Reality · ${portal.year}`}
+              pinColor="#5a3d8c"
+              onPress={() => setOpenPortal(portal)}
             />
           ))}
         </MapView>
@@ -823,6 +917,39 @@ function WalkDetailScreen({ walk, onClose }: { walk: WalkSession; onClose: () =>
             </View>
           ))}
         </View>
+      ) : null}
+
+      {walkPortals.length ? (
+        <View style={styles.historyList}>
+          <Text style={styles.sectionEyebrow}>ALTERNATE REALITY</Text>
+          {walkPortals.map((portal) => (
+            <Pressable key={portal.id} onPress={() => setOpenPortal(portal)} style={styles.historyCard}>
+              <Image
+                source={{ uri: portal.generatedImageDataUri }}
+                accessibilityLabel={`AI historical panorama of ${portal.placeTitle ?? 'this view'} in ${portal.year}`}
+                style={styles.historyImage}
+                resizeMode="cover"
+              />
+              <View style={styles.historyBody}>
+                <Text style={styles.generatedLabel}>AI HISTORICAL INTERPRETATION · {portal.year}</Text>
+                <Text style={styles.nestedHistoryTitle}>
+                  {portal.placeTitle ?? 'This viewpoint'}
+                </Text>
+                <Text style={styles.interpretationNote}>
+                  Look around this 2D streetscape. This is an imaginative reconstruction, not an archival photograph.
+                </Text>
+              </View>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+
+      {openPortal ? (
+        <PortalViewerModal
+          visible
+          portal={openPortal}
+          onClose={() => setOpenPortal(undefined)}
+        />
       ) : null}
     </ScrollView>
   );
@@ -947,7 +1074,14 @@ const styles = StyleSheet.create({
   discoveryLabel: { color: '#3f6f52', fontSize: 10, fontWeight: '900', letterSpacing: 1.5 },
   discoveryTitle: { color: '#17261e', fontSize: 20, fontWeight: '900', marginTop: 5 },
   discoveryHook: { color: '#485b50', fontSize: 14, lineHeight: 20, marginTop: 4 },
+  portalBanner: { marginHorizontal: 20, marginTop: 12, marginBottom: 4, backgroundColor: '#d9e4ec', borderRadius: 19, padding: 17 },
+  portalBannerLabel: { color: '#2c6b8b', fontSize: 10, fontWeight: '900', letterSpacing: 1.5 },
   timeCameraButton: { marginHorizontal: 20, marginTop: 18, minHeight: 76, borderRadius: 20, backgroundColor: '#b34a32', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 13 },
+  alternateButton: { marginHorizontal: 20, marginTop: 10, minHeight: 76, borderRadius: 20, backgroundColor: '#3d4f73', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 13 },
+  alternateIcon: { width: 43, height: 43, borderRadius: 22, backgroundColor: 'rgba(255,250,240,0.18)', alignItems: 'center', justifyContent: 'center' },
+  alternateEyebrow: { color: '#c5d0e8', fontSize: 9, fontWeight: '900', letterSpacing: 1.4 },
+  alternateTitle: { color: '#fffaf0', fontSize: 17, fontWeight: '900', marginTop: 2 },
+  alternateArrow: { color: '#fffaf0', fontSize: 31, fontWeight: '300' },
   timeCameraIcon: { width: 43, height: 43, borderRadius: 22, backgroundColor: 'rgba(255,250,240,0.18)', alignItems: 'center', justifyContent: 'center' },
   timeCameraIconText: { color: '#fffaf0', fontSize: 25, fontWeight: '900' },
   timeCameraCopy: { flex: 1 },

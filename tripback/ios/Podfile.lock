@@ -1953,6 +1953,8 @@ PODS:
     - React-utils (= 0.86.0)
     - ReactNativeDependencies
   - ReactNativeDependencies (0.86.0)
+  - RealityPortal (1.0.0):
+    - ExpoModulesCore
   - UMAppLoader (57.0.1)
   - Yoga (0.0.0)
 
@@ -2050,6 +2052,7 @@ DEPENDENCIES:
   - ReactCodegen (from `build/generated/ios/ReactCodegen`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - ReactNativeDependencies (from `../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)
+  - RealityPortal (from `../modules/reality-portal/ios`)
   - UMAppLoader (from `../node_modules/unimodules-app-loader/ios`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
@@ -2239,6 +2242,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   ReactNativeDependencies:
     :podspec: "../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec"
+  RealityPortal:
+    :path: "../modules/reality-portal/ios"
   UMAppLoader:
     :path: "../node_modules/unimodules-app-loader/ios"
   Yoga:
@@ -2337,6 +2342,7 @@ SPEC CHECKSUMS:
   ReactCodegen: afe0d436ee089d7bea6418429d8312b1d23a6801
   ReactCommon: d5c1bb4427bf51c443de5926aac332c89ddd9363
   ReactNativeDependencies: fa0a54b3f5319ae0e3b9aff32bfee7a424b88e66
+  RealityPortal: 6a2e20228ab30c09fc1a6853359a45cec50a93db
   UMAppLoader: 173cb90a3039aa9c1b84bace4487e1907a4a5a39
   Yoga: fe50ab299e578f397fef753cf309c6703a4db29b
 

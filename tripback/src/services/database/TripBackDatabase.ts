@@ -4,6 +4,8 @@ import { distanceMetres } from '../../domain/geo';
 import type {
   Discovery,
   GeneratedImage,
+  RealityPortal,
+  RealityPortalPin,
   RoutePoint,
   WalkDetail,
   WalkSession,
@@ -62,7 +64,25 @@ type GeneratedImageRow = {
   created_at: string;
 };
 
-type StateRow = { value: string };
+type PortalRow = {
+  id: string;
+  walk_id: string | null;
+  place_title: string | null;
+  year: string;
+  latitude: number;
+  longitude: number;
+  origin_heading: number;
+  modern_image_data: string | null;
+  modern_image_mime: string | null;
+  generated_image_data: string;
+  generated_image_mime: string;
+  created_at: string;
+};
+
+type StateRow = {
+  key: string;
+  value: string;
+};
 
 const mapWalk = (row: WalkRow): WalkSession => ({
   id: row.id,
@@ -94,6 +114,24 @@ const mapGeneratedImage = (row: GeneratedImageRow): GeneratedImage => ({
   modernImageDataUri: imageDataUri(row.modern_image_data, row.modern_image_mime),
   generatedImageDataUri: imageDataUri(row.generated_image_data, row.generated_image_mime)!,
   createdAt: row.created_at,
+});
+
+const mapPortalPin = (row: PortalRow): RealityPortalPin => ({
+  id: row.id,
+  walkId: row.walk_id ?? undefined,
+  placeTitle: row.place_title ?? undefined,
+  year: row.year,
+  coordinate: { latitude: row.latitude, longitude: row.longitude },
+  originHeading: row.origin_heading,
+  createdAt: row.created_at,
+});
+
+const mapPortal = (row: PortalRow): RealityPortal => ({
+  ...mapPortalPin(row),
+  modernImageDataUri: imageDataUri(row.modern_image_data, row.modern_image_mime),
+  generatedImageDataUri: imageDataUri(row.generated_image_data, row.generated_image_mime)!,
+  generatedBase64: row.generated_image_data,
+  generatedMimeType: row.generated_image_mime,
 });
 
 const mapDiscovery = (row: DiscoveryRow): Discovery => ({
@@ -182,6 +220,21 @@ class TripBackDatabase {
       );
       CREATE INDEX IF NOT EXISTS idx_discoveries_walk ON discoveries(walk_id);
       CREATE INDEX IF NOT EXISTS idx_generated_images_walk ON generated_images(walk_id);
+      CREATE TABLE IF NOT EXISTS reality_portals (
+        id TEXT PRIMARY KEY NOT NULL,
+        walk_id TEXT REFERENCES walk_sessions(id) ON DELETE CASCADE,
+        place_title TEXT,
+        year TEXT NOT NULL,
+        latitude REAL NOT NULL,
+        longitude REAL NOT NULL,
+        origin_heading REAL NOT NULL DEFAULT 0,
+        modern_image_data TEXT,
+        modern_image_mime TEXT,
+        generated_image_data TEXT NOT NULL,
+        generated_image_mime TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_reality_portals_walk ON reality_portals(walk_id);
     `);
   }
 
@@ -286,12 +339,13 @@ class TripBackDatabase {
   async getWalkDetail(walkId: string): Promise<WalkDetail | null> {
     const walk = await this.getWalk(walkId);
     if (!walk) return null;
-    const [route, discoveries, generatedImages] = await Promise.all([
+    const [route, discoveries, generatedImages, portals] = await Promise.all([
       this.listRoutePoints(walkId),
       this.listDiscoveriesForWalk(walkId),
       this.listGeneratedImagesForWalk(walkId),
+      this.listPortalsForWalk(walkId),
     ]);
-    return { walk, route, discoveries, generatedImages };
+    return { walk, route, discoveries, generatedImages, portals };
   }
 
   async saveGeneratedImage(image: {
@@ -346,6 +400,86 @@ class TripBackDatabase {
       walkId,
     );
     return rows.map(mapGeneratedImage);
+  }
+
+  async savePortal(portal: {
+    walkId?: string;
+    placeTitle?: string;
+    year: string;
+    coordinate: { latitude: number; longitude: number };
+    originHeading: number;
+    modernBase64?: string;
+    modernMimeType?: string;
+    generatedBase64: string;
+    generatedMimeType: string;
+  }): Promise<RealityPortal> {
+    await this.initialize();
+    const database = await this.database();
+    const row: PortalRow = {
+      id: `portal:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
+      walk_id: portal.walkId ?? null,
+      place_title: portal.placeTitle ?? null,
+      year: portal.year,
+      latitude: portal.coordinate.latitude,
+      longitude: portal.coordinate.longitude,
+      origin_heading: portal.originHeading,
+      modern_image_data: portal.modernBase64 ?? null,
+      modern_image_mime: portal.modernMimeType ?? null,
+      generated_image_data: portal.generatedBase64,
+      generated_image_mime: portal.generatedMimeType,
+      created_at: new Date().toISOString(),
+    };
+    await database.runAsync(
+      `INSERT INTO reality_portals
+        (id, walk_id, place_title, year, latitude, longitude, origin_heading,
+         modern_image_data, modern_image_mime, generated_image_data, generated_image_mime, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      row.id,
+      row.walk_id,
+      row.place_title,
+      row.year,
+      row.latitude,
+      row.longitude,
+      row.origin_heading,
+      row.modern_image_data,
+      row.modern_image_mime,
+      row.generated_image_data,
+      row.generated_image_mime,
+      row.created_at,
+    );
+    return mapPortal(row);
+  }
+
+  async listPortalPins(): Promise<RealityPortalPin[]> {
+    await this.initialize();
+    const database = await this.database();
+    const rows = await database.getAllAsync<PortalRow>(
+      `SELECT id, walk_id, place_title, year, latitude, longitude, origin_heading,
+              NULL AS modern_image_data, NULL AS modern_image_mime,
+              '' AS generated_image_data, '' AS generated_image_mime, created_at
+       FROM reality_portals
+       ORDER BY created_at DESC`,
+    );
+    return rows.map(mapPortalPin);
+  }
+
+  async getPortal(id: string): Promise<RealityPortal | null> {
+    await this.initialize();
+    const database = await this.database();
+    const row = await database.getFirstAsync<PortalRow>(
+      'SELECT * FROM reality_portals WHERE id = ?',
+      id,
+    );
+    return row ? mapPortal(row) : null;
+  }
+
+  async listPortalsForWalk(walkId: string): Promise<RealityPortal[]> {
+    const database = await this.database();
+    const rows = await database.getAllAsync<PortalRow>(
+      'SELECT * FROM reality_portals WHERE walk_id = ? ORDER BY created_at ASC',
+      walkId,
+    );
+    return rows.map(mapPortal);
   }
 
   async getLastRoutePoint(walkId: string): Promise<RoutePoint | null> {
@@ -488,6 +622,7 @@ class TripBackDatabase {
     await database.withTransactionAsync(async () => {
       await database.runAsync('DELETE FROM route_points');
       await database.runAsync('DELETE FROM generated_images');
+      await database.runAsync('DELETE FROM reality_portals');
       await database.runAsync('DELETE FROM discoveries');
       await database.runAsync('DELETE FROM walk_sessions');
       await database.runAsync('DELETE FROM app_state');

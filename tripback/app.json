@@ -28,7 +28,7 @@
       [
         "expo-image-picker",
         {
-          "cameraPermission": "TripBack uses the camera to reimagine the scene around you in a chosen historical era.",
+          "cameraPermission": "TripBack uses the camera to capture a street view and to look around a historical interpretation pinned to that spot.",
           "photosPermission": "TripBack can use a photo you choose to create a historical interpretation of the scene.",
           "microphonePermission": false
         }

@@ -1,4 +1,12 @@
-import type { Discovery, EngineStatus, GeneratedImage, WalkDetail, WalkSession } from '../domain/types';
+import type {
+  Discovery,
+  EngineStatus,
+  GeneratedImage,
+  RealityPortal,
+  RealityPortalPin,
+  WalkDetail,
+  WalkSession,
+} from '../domain/types';
 import { sydneyDemoRoute } from '../simulation/sydneyRoute';
 import { tripBackDatabase } from '../services/database/TripBackDatabase';
 import { generateWalkSummary } from '../services/discovery/GeminiClient';
@@ -138,6 +146,28 @@ class TripBackEngine {
     generatedMimeType: string;
   }): Promise<GeneratedImage> {
     return tripBackDatabase.saveGeneratedImage(image);
+  }
+
+  async savePortal(portal: {
+    walkId?: string;
+    placeTitle?: string;
+    year: string;
+    coordinate: { latitude: number; longitude: number };
+    originHeading: number;
+    modernBase64?: string;
+    modernMimeType?: string;
+    generatedBase64: string;
+    generatedMimeType: string;
+  }): Promise<RealityPortal> {
+    return tripBackDatabase.savePortal(portal);
+  }
+
+  async listPortalPins(): Promise<RealityPortalPin[]> {
+    return tripBackDatabase.listPortalPins();
+  }
+
+  async getPortal(id: string): Promise<RealityPortal | null> {
+    return tripBackDatabase.getPortal(id);
   }
 
   async clearHistory(): Promise<void> {

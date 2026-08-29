@@ -10,6 +10,11 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
+  "expo": {
+    "autolinking": {
+      "nativeModulesDir": "./modules"
+    }
+  },
   "dependencies": {
     "@google/genai": "^2.19.0",
     "expo": "~57.0.0",
