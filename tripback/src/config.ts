@@ -4,6 +4,8 @@ export const tripBackConfig = {
     process.env.EXPO_PUBLIC_GEMINI_MODEL?.trim() || 'gemini-3.5-flash-lite',
   geminiImageModel:
     process.env.EXPO_PUBLIC_GEMINI_IMAGE_MODEL?.trim() || 'gemini-3.1-flash-image',
+  geminiVideoModel:
+    process.env.EXPO_PUBLIC_GEMINI_VIDEO_MODEL?.trim() || 'veo-3.1-fast-generate-preview',
   searchRadiusMetres: 500,
   notificationRadiusMetres: 200,
   minimumSearchMovementMetres: 150,

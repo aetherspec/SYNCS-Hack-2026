@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { Alert } from 'react-native';
@@ -22,6 +23,7 @@ import type {
 } from '@/domain/types';
 import { PLACES } from '@/constants/places';
 import { Palette } from '@/constants/theme';
+import { createHistoricalVideo } from '@/services/video/HistoricalVideoClient';
 
 export type WalkStop = {
   id: string;
@@ -67,6 +69,16 @@ export type SitePortal = {
   placeTitle?: string;
   coordinate?: Coordinate;
   createdAt?: string;
+  videoUri?: string;
+};
+
+export type VideoJob = {
+  portalId: string;
+  siteId: string;
+  title: string;
+  status: 'generating' | 'ready' | 'error';
+  videoUri?: string;
+  error?: string;
 };
 
 const STOP_TINTS = [Palette.butter, Palette.blush, Palette.sky, Palette.lavender];
@@ -170,6 +182,12 @@ type AppState = {
   viewingPortal?: RealityPortal;
   openPortalViewer: (portalId: string) => Promise<void>;
   closePortalViewer: () => void;
+  videoJobs: Record<string, VideoJob>;
+  startPortalVideo: (siteId: string, portalId: string, title: string, year: string) => void;
+  dismissVideoJob: (portalId: string) => void;
+  viewingVideo?: { uri: string; title: string };
+  openPortalVideo: (portalId: string, title: string) => Promise<void>;
+  closePortalVideo: () => void;
 };
 
 const Ctx = createContext<AppState | null>(null);
@@ -188,6 +206,9 @@ export function AppStateProvider({ children }: PropsWithChildren) {
   const [pendingCapture, setPendingCapture] = useState<PendingCapture>();
   const [sitePortals, setSitePortals] = useState<Record<string, SitePortal>>({});
   const [viewingPortal, setViewingPortal] = useState<RealityPortal>();
+  const [videoJobs, setVideoJobs] = useState<Record<string, VideoJob>>({});
+  const [viewingVideo, setViewingVideo] = useState<{ uri: string; title: string }>();
+  const videoRequests = useRef(new Set<string>());
 
   const hydrate = useCallback(async (status?: EngineStatus) => {
     const [savedWalks, pins] = await Promise.all([
@@ -214,6 +235,7 @@ export function AppStateProvider({ children }: PropsWithChildren) {
         placeTitle: pin.placeTitle,
         coordinate: pin.coordinate,
         createdAt: pin.createdAt,
+        videoUri: pin.videoUri,
       };
     }
     setOpened(nextOpened);
@@ -301,10 +323,73 @@ export function AppStateProvider({ children }: PropsWithChildren) {
           year: portal.year,
           modernUri: portal.modernImageDataUri,
           thenUri: portal.generatedImageDataUri,
+          videoUri: portal.videoUri,
         },
       };
     });
   }, []);
+
+  const startPortalVideo = useCallback(
+    (siteId: string, portalId: string, title: string, year: string) => {
+      if (videoRequests.current.has(portalId)) return;
+      videoRequests.current.add(portalId);
+      setVideoJobs(prev => ({
+        ...prev,
+        [portalId]: { portalId, siteId, title, status: 'generating' },
+      }));
+
+      void (async () => {
+        try {
+          const portal = await tripBackEngine.getPortal(portalId);
+          if (!portal?.generatedBase64 || !portal.generatedMimeType) {
+            throw new Error('The historical image could not be loaded');
+          }
+          if (portal.videoUri) {
+            setSitePortals(prev => ({
+              ...prev,
+              [siteId]: { ...prev[siteId]!, videoUri: portal.videoUri },
+            }));
+            setVideoJobs(prev => ({
+              ...prev,
+              [portalId]: {
+                portalId,
+                siteId,
+                title,
+                status: 'ready',
+                videoUri: portal.videoUri,
+              },
+            }));
+            return;
+          }
+
+          const videoUri = await createHistoricalVideo({
+            imageBase64: portal.generatedBase64,
+            mimeType: portal.generatedMimeType,
+            placeTitle: title,
+            year,
+          });
+          await tripBackEngine.savePortalVideo(portalId, videoUri);
+          setSitePortals(prev => ({
+            ...prev,
+            [siteId]: { ...prev[siteId]!, videoUri },
+          }));
+          setVideoJobs(prev => ({
+            ...prev,
+            [portalId]: { portalId, siteId, title, status: 'ready', videoUri },
+          }));
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          setVideoJobs(prev => ({
+            ...prev,
+            [portalId]: { portalId, siteId, title, status: 'error', error: message },
+          }));
+        } finally {
+          videoRequests.current.delete(portalId);
+        }
+      })();
+    },
+    [],
+  );
 
   const value = useMemo<AppState>(
     () => ({
@@ -359,6 +444,8 @@ export function AppStateProvider({ children }: PropsWithChildren) {
         setSitePortals({});
         setPendingCapture(undefined);
         setViewingPortal(undefined);
+        setVideoJobs({});
+        setViewingVideo(undefined);
       },
       pendingCapture,
       setPendingCapture,
@@ -372,6 +459,20 @@ export function AppStateProvider({ children }: PropsWithChildren) {
         if (portal) setViewingPortal(portal);
       },
       closePortalViewer: () => setViewingPortal(undefined),
+      videoJobs,
+      startPortalVideo,
+      dismissVideoJob: (portalId) =>
+        setVideoJobs(prev => {
+          const next = { ...prev };
+          delete next[portalId];
+          return next;
+        }),
+      viewingVideo,
+      openPortalVideo: async (portalId, title) => {
+        const portal = await tripBackEngine.getPortal(portalId);
+        if (portal?.videoUri) setViewingVideo({ uri: portal.videoUri, title });
+      },
+      closePortalVideo: () => setViewingVideo(undefined),
     }),
     [
       ready,
@@ -387,8 +488,11 @@ export function AppStateProvider({ children }: PropsWithChildren) {
       pendingCapture,
       sitePortals,
       viewingPortal,
+      videoJobs,
+      viewingVideo,
       hydrate,
       loadPortalMedia,
+      startPortalVideo,
     ],
   );
 

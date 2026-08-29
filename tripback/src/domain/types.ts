@@ -76,6 +76,7 @@ export type RealityPortalPin = {
   coordinate: Coordinate;
   originHeading: number;
   createdAt: string;
+  videoUri?: string;
 };
 
 export type RealityPortal = RealityPortalPin & {

@@ -20,6 +20,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { PortalViewerModal } from './src/alternateReality/PortalViewerModal';
 import { AppStateProvider, useAppState } from './src/components/app-state';
+import { HistoricalVideoLayer } from './src/components/historical-video';
 import { NavigationRoot } from './src/navigation';
 import { consumeInitialNotificationDestination } from './src/services/notifications/NotificationService';
 
@@ -69,6 +70,7 @@ export default function App() {
       <AppStateProvider>
         <NavigationRoot initialHref={initialHref} />
         <PortalLayer />
+        <HistoricalVideoLayer />
         <StatusBar style="dark" />
       </AppStateProvider>
     </GestureHandlerRootView>

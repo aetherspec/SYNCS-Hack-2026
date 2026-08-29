@@ -10,6 +10,7 @@ import {
 
 import { Motion } from '@/components/motion';
 import { EraPicker } from '@/components/era-picker';
+import { HistoricalVideoAction } from '@/components/historical-video';
 import { useAppState } from '@/components/app-state';
 import { PlaceHero } from '@/components/time-slider';
 import { useOpenTimePortal } from '@/components/use-open-time-portal';
@@ -98,6 +99,17 @@ export default function SiteDetailScreen() {
           <Motion kind="rise" delay={230}>
             <Text style={styles.blurb}>{place.blurb}</Text>
           </Motion>
+          {portal?.portalId ? (
+            <Motion kind="rise" delay={250}>
+              <HistoricalVideoAction
+                siteId={place.id}
+                portalId={portal.portalId}
+                title={place.name}
+                year={portal.year}
+                videoUri={portal.videoUri}
+              />
+            </Motion>
+          ) : null}
         </View>
       </ScrollView>
 

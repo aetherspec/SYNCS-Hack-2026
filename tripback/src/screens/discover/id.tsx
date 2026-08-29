@@ -12,6 +12,7 @@ import {
 import { currentCoordinate, useAppState } from '@/components/app-state';
 import { Motion } from '@/components/motion';
 import { EraPicker } from '@/components/era-picker';
+import { HistoricalVideoAction } from '@/components/historical-video';
 import { PlaceHero } from '@/components/time-slider';
 import { useOpenTimePortal } from '@/components/use-open-time-portal';
 import { usePlacePhoto } from '@/components/use-place-photo';
@@ -220,6 +221,17 @@ export default function DiscoverScreen() {
           {selectedEvent || /^\d{4}$/.test(era) ? (
             <Motion kind="rise" delay={230}>
               <Text style={styles.blurb}>{blurb}</Text>
+            </Motion>
+          ) : null}
+          {portal?.portalId ? (
+            <Motion kind="rise" delay={250}>
+              <HistoricalVideoAction
+                siteId={wikiId}
+                portalId={portal.portalId}
+                title={title}
+                year={portal.year}
+                videoUri={portal.videoUri}
+              />
             </Motion>
           ) : null}
         </View>

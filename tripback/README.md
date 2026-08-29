@@ -1,6 +1,6 @@
 # TripBack — handover
 
-TripBack is an iOS React Native / Expo app: walk around Sydney, see nearby history, photograph a facade, and get a Gemini reconstruction of that viewpoint in another year.
+TripBack is an iOS React Native / Expo app: walk around Sydney, see nearby history, photograph a facade, get a Gemini reconstruction of that viewpoint in another year, and bring the reconstructed scene to life as a short Veo video.
 
 This folder is the live app:
 
@@ -20,6 +20,8 @@ There is no backend, account system, or cloud database. Wikipedia, Heritage NSW,
 
 **AR placement.** A saved reconstruction can be opened from a curated place, live discovery, or previous walk. TripBack finds vertical surfaces through ARKit; tap a wall or facade to place the upright historical scene, pinch to resize it, twist to rotate it, and tap elsewhere to move it. The viewer uses the existing purple/lime TripBack design and offers a draggable panorama fallback if AR tracking is unavailable.
 
+**Living scenes.** After a historical still exists, **Bring this scene to life** submits that exact reconstruction as Veo’s first frame and creates an eight-second 720p scene with restrained period motion and ambient sound. The job lives above navigation, so the user can browse the map, walks, passport, or settings while it runs; a global banner reports progress and opens the finished clip. The MP4 is downloaded into the app and its local path is stored with the portal because Gemini-hosted video expires after two days.
+
 **Walks.** Only walks the user starts and ends. Names are Morning / Afternoon / Evening walk from the start time — Gemini no longer invents recap titles. Simulated sessions are excluded from the list. Completed-walk detail uses actual SQLite route points and named photo locations on an Apple map; human-readable `placeTitle` metadata is retained instead of exposing portal IDs.
 
 **Passport.** One stamp per opened historical view, anywhere, not limited to The Rocks. Each stamp keeps its place name, selected era/event, and visit date after restart. Twelve stamps fill a page and count as one Keeper stamp; the next view starts a new page. Settings has nudge radius, quiet-on-repeat, track-walks, and clear library; the old source footnote is removed.
@@ -34,6 +36,7 @@ There is no backend, account system, or cloud database. Wikipedia, Heritage NSW,
 - Apple Maps, Expo Location / Task Manager / Notifications / Image Picker / SQLite / Font / Splash
 - Reanimated 4, Gesture Handler, SVG
 - `@google/genai`
+- `expo-video` for saved Veo scene playback
 - Native ARKit wall-placement module: `modules/tripback-ar/`
 - Legacy automatic RealityKit viewer: `modules/reality-portal/` (still linked, no longer used by the UI)
 
@@ -137,6 +140,8 @@ UI state (opened portals, active walk, pending camera capture) is `src/component
 
 **Image reconstruction rules:** Gemini must preserve the original camera projection and use modern geometry as a scaffold only where historically compatible. Period-incompatible objects are translated at roughly the same scale and position (for example whiteboard → chalkboard). Grounded historical land use overrides the modern enclosure entirely when the photographed structure did not exist—for example an indoor room becomes farmland if those coordinates were farmland in the selected year.
 
+**Living scene:** saved historical panorama → `createHistoricalVideo` → Veo 3.1 Fast image-to-video long-running operation → poll every 10 seconds while navigation remains usable → download the eight-second 720p MP4 with the Gemini key → persist its document URI on the portal → global ready banner and native video player. Peak generation can take several minutes and requires a Gemini project with Veo access and billing.
+
 **Passport:** every `opened` portal id is a stamp. `floor(count / 12)` is the Keeper reward count; remainder (or a full page of 12) is the current grid.
 
 ## Engine API
@@ -171,6 +176,7 @@ The TripBackAR pod is linked and its native target has been compiled successfull
 - Simulator has no real camera or AR world tracking; use a phone for the complete photo and placement flow.
 - With the current Xcode 26.5 / React Native toolchain, a Debug simulator build can hit an existing React Native `Sealable` linker mismatch. The unsigned Release device build succeeds; use `ios:standalone` for the demo phone.
 - If the AR viewer reports no surface, move the phone slowly in good light and point it at a textured, flat wall before tapping.
+- Veo is a paid, quota-controlled preview service. If the still contains a child or a safety filter rejects the scene, generation can fail; TripBack leaves the still intact and offers a retry.
 - `ios/` is Expo-generated. After prebuild, re-set the development team, run `pod install`, and confirm `TripBackARModule.self` is in `ExpoModulesProvider.swift`.
 - Do not merge `origin/main` blindly; the design prototype and this native app diverged. UI was ported by hand into `src/screens/`.
 

@@ -89,6 +89,8 @@ PODS:
   - ExpoTaskManager (57.0.14):
     - ExpoModulesCore
     - UMAppLoader
+  - ExpoVideo (57.0.3):
+    - ExpoModulesCore
   - FBLazyVector (0.86.0)
   - hermes-engine (250829098.0.14):
     - hermes-engine/Pre-built (= 250829098.0.14)
@@ -2210,7 +2212,7 @@ DEPENDENCIES:
   - Expo (from `../node_modules/expo`)
   - ExpoAsset (from `../node_modules/expo/node_modules/expo-asset/ios`)
   - "ExpoDomWebView (from `../node_modules/expo/node_modules/@expo/dom-webview/ios`)"
-  - ExpoFileSystem (from `../node_modules/expo/node_modules/expo-file-system/ios/ExpoFileSystem.podspec`)
+  - ExpoFileSystem (from `../node_modules/expo-file-system/ios/ExpoFileSystem.podspec`)
   - ExpoFont (from `../node_modules/expo-font/ios/ExpoFont.podspec`)
   - ExpoImagePicker (from `../node_modules/expo-image-picker/ios`)
   - ExpoKeepAwake (from `../node_modules/expo/node_modules/expo-keep-awake/ios`)
@@ -2224,6 +2226,7 @@ DEPENDENCIES:
   - ExpoSplashScreen (from `../node_modules/expo-splash-screen/ios`)
   - ExpoSQLite (from `../node_modules/expo-sqlite/ios`)
   - ExpoTaskManager (from `../node_modules/expo-task-manager/ios`)
+  - ExpoVideo (from `../node_modules/expo-video/ios/ExpoVideo.podspec`)
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
   - hermes-engine (from `../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
   - RCTDeprecation (from `../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation`)
@@ -2321,7 +2324,7 @@ EXTERNAL SOURCES:
   ExpoDomWebView:
     :path: "../node_modules/expo/node_modules/@expo/dom-webview/ios"
   ExpoFileSystem:
-    :podspec: "../node_modules/expo/node_modules/expo-file-system/ios/ExpoFileSystem.podspec"
+    :podspec: "../node_modules/expo-file-system/ios/ExpoFileSystem.podspec"
   ExpoFont:
     :podspec: "../node_modules/expo-font/ios/ExpoFont.podspec"
   ExpoImagePicker:
@@ -2348,6 +2351,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-sqlite/ios"
   ExpoTaskManager:
     :path: "../node_modules/expo-task-manager/ios"
+  ExpoVideo:
+    :podspec: "../node_modules/expo-video/ios/ExpoVideo.podspec"
   FBLazyVector:
     :path: "../node_modules/react-native/Libraries/FBLazyVector"
   hermes-engine:
@@ -2536,6 +2541,7 @@ SPEC CHECKSUMS:
   ExpoSplashScreen: 6f422fd595600d78520c6b7dcf8a908fb8a7fec0
   ExpoSQLite: 57b23ab9fbb72215fa33763246d00ce6e6e531b4
   ExpoTaskManager: 370a3a6b0e05ddc94fc0e19d818596dcec9cde64
+  ExpoVideo: fad16dd734258a757b78c6287988ab7beb4e2f16
   FBLazyVector: b3e7ad108f0d882e30445c5527d774e3fd432f3d
   hermes-engine: a81e91e33c786f65f571b9d74327f589a1da8f82
   RCTDeprecation: 2a74a2c57675e64419bd89078efde81f7c1de90b

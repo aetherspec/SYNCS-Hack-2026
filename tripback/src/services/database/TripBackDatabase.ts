@@ -76,6 +76,7 @@ type PortalRow = {
   modern_image_mime: string | null;
   generated_image_data: string;
   generated_image_mime: string;
+  video_uri: string | null;
   created_at: string;
 };
 
@@ -124,6 +125,7 @@ const mapPortalPin = (row: PortalRow): RealityPortalPin => ({
   coordinate: { latitude: row.latitude, longitude: row.longitude },
   originHeading: row.origin_heading,
   createdAt: row.created_at,
+  videoUri: row.video_uri ?? undefined,
 });
 
 const mapPortal = (row: PortalRow): RealityPortal => ({
@@ -236,6 +238,7 @@ class TripBackDatabase {
       );
       CREATE INDEX IF NOT EXISTS idx_reality_portals_walk ON reality_portals(walk_id);
     `);
+    await this.ensureColumn(database, 'reality_portals', 'video_uri', 'TEXT');
   }
 
   private async ensureColumn(
@@ -427,6 +430,7 @@ class TripBackDatabase {
       modern_image_mime: portal.modernMimeType ?? null,
       generated_image_data: portal.generatedBase64,
       generated_image_mime: portal.generatedMimeType,
+      video_uri: null,
       created_at: new Date().toISOString(),
     };
     await database.runAsync(
@@ -456,7 +460,7 @@ class TripBackDatabase {
     const rows = await database.getAllAsync<PortalRow>(
       `SELECT id, walk_id, place_title, year, latitude, longitude, origin_heading,
               NULL AS modern_image_data, NULL AS modern_image_mime,
-              '' AS generated_image_data, '' AS generated_image_mime, created_at
+              '' AS generated_image_data, '' AS generated_image_mime, video_uri, created_at
        FROM reality_portals
        ORDER BY created_at DESC`,
     );
@@ -471,6 +475,12 @@ class TripBackDatabase {
       id,
     );
     return row ? mapPortal(row) : null;
+  }
+
+  async savePortalVideo(id: string, videoUri: string): Promise<void> {
+    await this.initialize();
+    const database = await this.database();
+    await database.runAsync('UPDATE reality_portals SET video_uri = ? WHERE id = ?', videoUri, id);
   }
 
   async listPortalsForWalk(walkId: string): Promise<RealityPortal[]> {

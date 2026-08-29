@@ -161,6 +161,10 @@ class TripBackEngine {
     return tripBackDatabase.getPortal(id);
   }
 
+  async savePortalVideo(id: string, videoUri: string): Promise<void> {
+    return tripBackDatabase.savePortalVideo(id, videoUri);
+  }
+
   async clearHistory(): Promise<void> {
     if (this.status.activeWalk) {
       await stopWalkLocationUpdates();

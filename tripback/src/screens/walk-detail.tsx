@@ -12,6 +12,7 @@ import { useAppState } from '@/components/app-state';
 import { Redirect, useLocalSearchParams, useRouter } from '@/nav';
 
 import { Motion } from '@/components/motion';
+import { HistoricalVideoAction } from '@/components/historical-video';
 import { PlaceHero } from '@/components/time-slider';
 import { WalkMap } from '@/components/walk-map';
 import { PLACES } from '@/constants/places';
@@ -191,15 +192,26 @@ export default function WalkDetailScreen() {
                 <Text style={styles.portalBlurb}>{p.blurb}</Text>
               </Motion>
               {st.portalId ? (
-                <Motion kind="rise" delay={240}>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => void openPortalViewer(st.portalId!)}
-                    style={styles.placeArBtn}
-                  >
-                    <Text style={styles.placeArBtnText}>Place in AR ✦</Text>
-                  </Pressable>
-                </Motion>
+                <>
+                  <Motion kind="rise" delay={230}>
+                    <HistoricalVideoAction
+                      siteId={st.id}
+                      portalId={st.portalId}
+                      title={p.name}
+                      year={st.era}
+                      videoUri={sitePortals[st.id]?.videoUri}
+                    />
+                  </Motion>
+                  <Motion kind="rise" delay={260}>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => void openPortalViewer(st.portalId!)}
+                      style={styles.placeArBtn}
+                    >
+                      <Text style={styles.placeArBtnText}>Place in AR ✦</Text>
+                    </Pressable>
+                  </Motion>
+                </>
               ) : null}
             </View>
           </ScrollView>
