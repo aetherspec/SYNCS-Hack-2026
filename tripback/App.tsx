@@ -6,6 +6,8 @@ import {
   Alert,
   Image,
   Modal,
+  type NativeSyntheticEvent,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -30,6 +32,11 @@ import type {
 } from './src/domain/types';
 import { listNearbyPlaces } from './src/services/discovery/DiscoveryService';
 import { createHistoricalView } from './src/services/images/HistoricalImageClient';
+import {
+  TripBackARView,
+  type TripBackARPlacementOutcome,
+  type TripBackARStatus,
+} from './modules/tripback-ar';
 
 const sydneyCentre: Coordinate = { latitude: -33.856784, longitude: 151.215297 };
 const initialRegion: Region = {
@@ -383,6 +390,16 @@ type CapturedPhoto = {
   mimeType: string;
 };
 
+type CameraViewMode = 'composite' | 'now' | 'then';
+
+const terminalARStates: TripBackARStatus['state'][] = [
+  'unavailable',
+  'unsupported',
+  'failure',
+  'interrupted',
+  'error',
+];
+
 function TimeCameraModal({
   visible,
   coordinate,
@@ -402,6 +419,11 @@ function TimeCameraModal({
   const [historicalImage, setHistoricalImage] = useState<string>();
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string>();
+  const [historicalOpacity, setHistoricalOpacity] = useState(0.58);
+  const [cameraViewMode, setCameraViewMode] = useState<CameraViewMode>('composite');
+  const [arOpen, setArOpen] = useState(false);
+  const [arStatus, setArStatus] = useState<TripBackARStatus>({ state: 'inactive' });
+  const [arPlacement, setArPlacement] = useState<TripBackARPlacementOutcome>();
   const selectedPlace =
     places.find((candidate) => candidate.id === selectedPlaceId) ?? places[0];
 
@@ -412,12 +434,42 @@ function TimeCameraModal({
     setPhoto(undefined);
     setHistoricalImage(undefined);
     setError(undefined);
+    setHistoricalOpacity(0.58);
+    setCameraViewMode('composite');
+    setArOpen(false);
+    setArStatus({ state: 'inactive' });
+    setArPlacement(undefined);
   }, [places, visible]);
+
+  useEffect(() => {
+    if (!visible) setArOpen(false);
+  }, [visible]);
 
   function choosePlace(place: StoryCandidate) {
     setSelectedPlaceId(place.id);
     setYear(suggestHistoricalYear(place));
     setHistoricalImage(undefined);
+    setCameraViewMode('composite');
+  }
+
+  function openAR() {
+    if (!historicalImage || Platform.OS !== 'ios') return;
+    setError(undefined);
+    setArStatus({ state: 'inactive' });
+    setArPlacement(undefined);
+    setArOpen(true);
+  }
+
+  function handleARStatus(nextStatus: TripBackARStatus) {
+    setArStatus(nextStatus);
+    if (!terminalARStates.includes(nextStatus.state)) return;
+    setArOpen(false);
+    setError('AR is unavailable right now. You can try again from this result.');
+  }
+
+  function closeAR() {
+    setArOpen(false);
+    setArStatus({ state: 'inactive' });
   }
 
   async function takePhoto() {
@@ -554,10 +606,88 @@ function TimeCameraModal({
               <View style={styles.generatedLabelRow}>
                 <Text style={styles.generatedLabel}>AI HISTORICAL INTERPRETATION · {year}</Text>
               </View>
-              <Image source={{ uri: historicalImage }} style={styles.cameraPreview} resizeMode="cover" />
+              <View style={styles.compositeFrame}>
+                <Image
+                  source={{ uri: photo?.uri }}
+                  accessibilityLabel="Your modern captured view"
+                  style={styles.cameraPreview}
+                  resizeMode="cover"
+                />
+                {cameraViewMode !== 'now' ? (
+                  <Image
+                    source={{ uri: historicalImage }}
+                    accessibilityLabel={`Historical interpretation from ${year}`}
+                    style={[styles.compositeHistorical, { opacity: cameraViewMode === 'then' ? 1 : historicalOpacity }]}
+                    resizeMode="cover"
+                  />
+                ) : null}
+                {cameraViewMode !== 'then' ? (
+                  <View style={styles.compositeNowBadge} pointerEvents="none">
+                    <Text style={[styles.compositeBadgeText, styles.compositeNowBadgeText]}>NOW</Text>
+                  </View>
+                ) : null}
+                {cameraViewMode !== 'now' ? (
+                  <View style={styles.compositeThenBadge} pointerEvents="none">
+                    <Text style={styles.compositeBadgeText}>THEN · {year}</Text>
+                  </View>
+                ) : null}
+              </View>
+              <View style={styles.compositeControls}>
+                <View style={styles.viewModeRow}>
+                  {(['composite', 'now', 'then'] as CameraViewMode[]).map((mode) => (
+                    <Pressable
+                      key={mode}
+                      accessibilityRole="button"
+                      accessibilityLabel={`View ${mode === 'composite' ? 'composite' : mode}`}
+                      onPress={() => setCameraViewMode(mode)}
+                      style={[styles.viewModeButton, cameraViewMode === mode && styles.viewModeButtonSelected]}
+                    >
+                      <Text style={[styles.viewModeText, cameraViewMode === mode && styles.viewModeTextSelected]}>
+                        {mode === 'composite' ? 'OVERLAY' : mode.toUpperCase()}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <View style={styles.opacityRow}>
+                  <Text style={styles.opacityLabel}>THEN OPACITY</Text>
+                  <View style={styles.opacitySteps}>
+                    {[0.25, 0.4, 0.58, 0.76, 1].map((value) => (
+                      <Pressable
+                        key={value}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Set historical image opacity to ${Math.round(value * 100)} percent`}
+                        onPress={() => {
+                          setHistoricalOpacity(value);
+                          setCameraViewMode('composite');
+                        }}
+                        style={[styles.opacityStep, historicalOpacity === value && styles.opacityStepSelected]}
+                      >
+                        <View style={[styles.opacityDot, { opacity: value }]} />
+                      </Pressable>
+                    ))}
+                  </View>
+                  <Text style={styles.opacityValue}>{Math.round(historicalOpacity * 100)}%</Text>
+                </View>
+              </View>
               <Text style={styles.interpretationNote}>
                 This is an imaginative reconstruction, not an archival photograph. Details may be inaccurate.
               </Text>
+              {Platform.OS === 'ios' ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Open historical interpretation in AR"
+                  onPress={openAR}
+                  style={({ pressed }) => [styles.arEntryButton, pressed && styles.buttonDimmed]}
+                >
+                  <View style={styles.arEntryIcon}><Text style={styles.arEntryIconText}>＋</Text></View>
+                  <View style={styles.arEntryCopy}>
+                    <Text style={styles.arEntryEyebrow}>IPHONE AR</Text>
+                    <Text style={styles.arEntryTitle}>Place this interpretation in the scene</Text>
+                    <Text style={styles.arEntryText}>Use the camera to explore it on a wall or façade.</Text>
+                  </View>
+                  <Text style={styles.arEntryArrow}>›</Text>
+                </Pressable>
+              ) : null}
             </View>
           ) : photo ? (
             <View>
@@ -596,6 +726,103 @@ function TimeCameraModal({
               : 'This photo is sent to Gemini. Start a history walk first if you want the result saved with a walk.'}
           </Text>
         </ScrollView>
+      </View>
+      {historicalImage && Platform.OS === 'ios' ? (
+        <ARPortal
+          visible={arOpen}
+          imageUri={historicalImage}
+          status={arStatus}
+          placement={arPlacement}
+          onStatus={handleARStatus}
+          onPlacement={setArPlacement}
+          onClose={closeAR}
+          onReturnToResult={closeAR}
+        />
+      ) : null}
+    </Modal>
+  );
+}
+
+function ARPortal({
+  visible,
+  imageUri,
+  status,
+  placement,
+  onStatus,
+  onPlacement,
+  onClose,
+  onReturnToResult,
+}: {
+  visible: boolean;
+  imageUri: string;
+  status: TripBackARStatus;
+  placement?: TripBackARPlacementOutcome;
+  onStatus: (status: TripBackARStatus) => void;
+  onPlacement: (placement: TripBackARPlacementOutcome) => void;
+  onClose: () => void;
+  onReturnToResult: () => void;
+}) {
+  const terminal = terminalARStates.includes(status.state);
+  const placed = placement?.outcome === 'placed' || placement?.outcome === 'replaced';
+  const guidance = terminal
+    ? status.message || status.reason || 'AR is not available right now.'
+    : placed
+      ? placement?.outcome === 'replaced' ? 'Interpretation replaced. Pinch to resize or twist to rotate.' : 'Placed. Pinch to resize or twist to rotate.'
+      : placement?.outcome === 'noRaycast'
+        ? placement.message || 'No surface found. Point at a wall or façade and try again.'
+        : placement?.outcome === 'noImage'
+          ? placement.message || 'The historical image is unavailable. Return to Time Camera and try again.'
+    : status.state === 'limited'
+      ? status.message || status.reason || 'Tracking is limited. Move slowly and point at a textured wall or façade.'
+      : status.state === 'ready'
+        ? 'Surface found. Tap the wall or façade to place the interpretation.'
+        : 'Move slowly and point at a wall or façade so AR can find a surface.';
+
+  return (
+    <Modal visible={visible} animationType="fade" presentationStyle="fullScreen" onRequestClose={onClose}>
+      <View style={styles.arPortal}>
+        <TripBackARView
+          style={StyleSheet.absoluteFill}
+          imageUri={imageUri}
+          active={visible}
+          onStatus={(event: NativeSyntheticEvent<TripBackARStatus>) => onStatus(event.nativeEvent)}
+          onPlacement={(event: NativeSyntheticEvent<TripBackARPlacementOutcome>) => onPlacement(event.nativeEvent)}
+        />
+        <View style={styles.arShade} pointerEvents="none" />
+        <View style={styles.arHeader}>
+          <Pressable onPress={onClose} hitSlop={12} accessibilityLabel="Close AR">
+            <Text style={styles.arClose}>Close</Text>
+          </Pressable>
+          <Text style={styles.arHeaderTitle}>Historical view · AR</Text>
+          <View style={styles.arHeaderSpacer} />
+        </View>
+
+        <View style={styles.arTopCopy} pointerEvents="none">
+          <Text style={styles.arEyebrow}>{terminal ? 'AR UNAVAILABLE' : placed ? 'IN THE SCENE' : 'FIND A SURFACE'}</Text>
+          <Text style={styles.arGuidance}>{guidance}</Text>
+        </View>
+
+        {terminal ? (
+          <View style={styles.arIssueCard}>
+            <Text style={styles.arIssueTitle}>Return to Time Camera</Text>
+            <Text style={styles.arIssueText}>Your static historical result is still available.</Text>
+            <Pressable onPress={onReturnToResult} style={styles.arReturnButton}>
+              <Text style={styles.arReturnButtonText}>Back to result</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.arInstructionCard} pointerEvents="none">
+            <Text style={styles.arInstructionTitle}>A steady start helps</Text>
+            <Text style={styles.arInstructionText}>Move slowly · point at a wall or façade · tap to place</Text>
+            <Text style={styles.arInstructionText}>Pinch to resize · twist to rotate</Text>
+          </View>
+        )}
+
+        <View style={styles.arDisclaimer} pointerEvents="none">
+          <Text style={styles.arDisclaimerText}>AI HISTORICAL INTERPRETATION</Text>
+          <Text style={styles.arDisclaimerSubtext}>Not an accurate archival or spatial reconstruction.</Text>
+        </View>
+        <StatusBar style="light" />
       </View>
     </Modal>
   );
@@ -987,8 +1214,55 @@ const styles = StyleSheet.create({
   previewLabel: { color: '#8a7457', fontSize: 9, fontWeight: '900', letterSpacing: 1.3, marginTop: 20, marginBottom: 7 },
   generatedLabelRow: { marginTop: 20, marginBottom: 7 },
   generatedLabel: { color: '#b34a32', fontSize: 9, fontWeight: '900', letterSpacing: 1.2 },
+  compositeFrame: { height: 420, borderRadius: 22, overflow: 'hidden', backgroundColor: '#dcd3c0' },
   cameraPreview: { width: '100%', height: 420, borderRadius: 22, backgroundColor: '#dcd3c0' },
+  compositeHistorical: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, width: '100%', height: 420 },
+  compositeNowBadge: { position: 'absolute', top: 14, left: 14, borderRadius: 12, backgroundColor: 'rgba(255,250,240,0.92)', paddingHorizontal: 10, paddingVertical: 6 },
+  compositeThenBadge: { position: 'absolute', top: 14, right: 14, borderRadius: 12, backgroundColor: 'rgba(24,60,43,0.9)', paddingHorizontal: 10, paddingVertical: 6 },
+  compositeBadgeText: { color: '#fffaf0', fontSize: 10, fontWeight: '900', letterSpacing: 1.1 },
+  compositeNowBadgeText: { color: '#183c2b' },
+  compositeControls: { marginTop: 10, borderRadius: 16, backgroundColor: '#e4dcc8', padding: 8 },
+  viewModeRow: { flexDirection: 'row', gap: 6 },
+  viewModeButton: { flex: 1, minHeight: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  viewModeButtonSelected: { backgroundColor: '#183c2b' },
+  viewModeText: { color: '#69746d', fontSize: 9, fontWeight: '900', letterSpacing: 0.8 },
+  viewModeTextSelected: { color: '#fffaf0' },
+  opacityRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingHorizontal: 3 },
+  opacityLabel: { color: '#8a7457', fontSize: 9, fontWeight: '900', letterSpacing: 0.8 },
+  opacitySteps: { flex: 1, flexDirection: 'row', justifyContent: 'flex-end', gap: 3, marginLeft: 8 },
+  opacityStep: { width: 25, height: 25, borderRadius: 8, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'transparent' },
+  opacityStepSelected: { borderColor: '#b34a32', backgroundColor: '#f5f0e5' },
+  opacityDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#b34a32' },
+  opacityValue: { color: '#34433a', width: 34, textAlign: 'right', fontSize: 10, fontWeight: '900' },
   interpretationNote: { color: '#69746d', fontSize: 12, lineHeight: 17, marginTop: 9 },
+  arEntryButton: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16, padding: 14, borderRadius: 18, backgroundColor: '#e4dcc8', borderWidth: 1, borderColor: '#cbbda3' },
+  arEntryIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#183c2b', alignItems: 'center', justifyContent: 'center' },
+  arEntryIconText: { color: '#fffaf0', fontSize: 25, fontWeight: '300', lineHeight: 28 },
+  arEntryCopy: { flex: 1 },
+  arEntryEyebrow: { color: '#3f6f52', fontSize: 9, fontWeight: '900', letterSpacing: 1.3 },
+  arEntryTitle: { color: '#17261e', fontSize: 15, fontWeight: '900', marginTop: 2 },
+  arEntryText: { color: '#69746d', fontSize: 12, lineHeight: 16, marginTop: 3 },
+  arEntryArrow: { color: '#b34a32', fontSize: 29, fontWeight: '300' },
+  arPortal: { flex: 1, backgroundColor: '#17261e' },
+  arShade: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(9,19,14,0.16)' },
+  arHeader: { position: 'absolute', top: 58, left: 20, right: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  arClose: { color: '#fffaf0', fontSize: 15, fontWeight: '800', textShadowColor: 'rgba(0,0,0,0.45)', textShadowRadius: 5 },
+  arHeaderTitle: { color: '#fffaf0', fontSize: 15, fontWeight: '900', textShadowColor: 'rgba(0,0,0,0.45)', textShadowRadius: 5 },
+  arHeaderSpacer: { width: 42 },
+  arTopCopy: { position: 'absolute', top: 112, left: 22, right: 22 },
+  arEyebrow: { color: '#f3c4b5', fontSize: 10, fontWeight: '900', letterSpacing: 1.5, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 5 },
+  arGuidance: { color: '#fffaf0', fontSize: 21, lineHeight: 26, fontWeight: '900', marginTop: 5, textShadowColor: 'rgba(0,0,0,0.55)', textShadowRadius: 6 },
+  arInstructionCard: { position: 'absolute', left: 20, right: 20, bottom: 113, padding: 16, borderRadius: 18, backgroundColor: 'rgba(255,250,240,0.93)' },
+  arInstructionTitle: { color: '#17261e', fontSize: 14, fontWeight: '900' },
+  arInstructionText: { color: '#485b50', fontSize: 13, lineHeight: 19, marginTop: 4 },
+  arIssueCard: { position: 'absolute', left: 20, right: 20, bottom: 113, padding: 18, borderRadius: 18, backgroundColor: '#fffaf0' },
+  arIssueTitle: { color: '#17261e', fontSize: 19, fontWeight: '900' },
+  arIssueText: { color: '#58655e', fontSize: 14, lineHeight: 20, marginTop: 5 },
+  arReturnButton: { minHeight: 50, borderRadius: 15, backgroundColor: '#183c2b', alignItems: 'center', justifyContent: 'center', marginTop: 14 },
+  arReturnButtonText: { color: '#fffaf0', fontSize: 14, fontWeight: '900' },
+  arDisclaimer: { position: 'absolute', left: 20, right: 20, bottom: 34, alignItems: 'center' },
+  arDisclaimerText: { color: '#fffaf0', fontSize: 9, fontWeight: '900', letterSpacing: 1.3, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 5 },
+  arDisclaimerSubtext: { color: 'rgba(255,250,240,0.82)', fontSize: 11, textAlign: 'center', marginTop: 4, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 5 },
   cameraError: { color: '#a12e22', fontSize: 13, lineHeight: 18, marginTop: 12 },
   generateButton: { minHeight: 58, borderRadius: 18, backgroundColor: '#183c2b', alignItems: 'center', justifyContent: 'center', marginTop: 17, paddingHorizontal: 14 },
   generateButtonText: { color: '#fffaf0', fontSize: 15, fontWeight: '900', textAlign: 'center' },
