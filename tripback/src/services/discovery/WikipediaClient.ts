@@ -26,6 +26,7 @@ type WikimediaImageResponse = {
 const endpoint = 'https://en.wikipedia.org/w/api.php';
 const commonsEndpoint = 'https://commons.wikimedia.org/w/api.php';
 const imageCache = new Map<string, string | undefined>();
+const placePhotoCache = new Map<string, string | undefined>();
 
 export async function fetchWikimediaImageForPlace(
   title: string,
@@ -58,6 +59,42 @@ export async function fetchWikimediaImageForPlace(
     imageCache.set(cacheKey, undefined);
     return undefined;
   }
+}
+
+/** Wikipedia page thumbnail, then Wikimedia Commons, for a place name. */
+export async function fetchPlacePhoto(title: string): Promise<string | undefined> {
+  const cacheKey = title.trim().toLocaleLowerCase();
+  if (!cacheKey) return undefined;
+  if (placePhotoCache.has(cacheKey)) return placePhotoCache.get(cacheKey);
+
+  try {
+    const params = new URLSearchParams({
+      action: 'query',
+      generator: 'search',
+      gsrsearch: title,
+      gsrlimit: '1',
+      prop: 'pageimages',
+      piprop: 'thumbnail',
+      pithumbsize: '900',
+      format: 'json',
+      formatversion: '2',
+    });
+    const response = await fetch(`${endpoint}?${params.toString()}`);
+    if (response.ok) {
+      const payload = (await response.json()) as WikipediaResponse;
+      const imageUrl = payload.query?.pages?.[0]?.thumbnail?.source;
+      if (imageUrl) {
+        placePhotoCache.set(cacheKey, imageUrl);
+        return imageUrl;
+      }
+    }
+  } catch {
+    // Fall through to Commons.
+  }
+
+  const commons = await fetchWikimediaImageForPlace(title);
+  placePhotoCache.set(cacheKey, commons);
+  return commons;
 }
 
 export async function fetchWikipediaCandidates(

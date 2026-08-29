@@ -60,18 +60,10 @@ class ReactNativeDelegate: ExpoReactNativeFactoryDelegate {
   }
 
   override func bundleURL() -> URL? {
-    let embedded = Bundle.main.url(forResource: "main", withExtension: "jsbundle")
 #if DEBUG
-#if targetEnvironment(simulator)
     return RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: ".expo/.virtual-metro-entry")
-      ?? embedded
 #else
-    // Device Debug embeds main.jsbundle so the phone can launch after unplugging.
-    return embedded
-      ?? RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: ".expo/.virtual-metro-entry")
-#endif
-#else
-    return embedded
+    return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
 #endif
   }
 }

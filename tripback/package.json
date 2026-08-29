@@ -16,17 +16,25 @@
     }
   },
   "dependencies": {
+    "@expo-google-fonts/baloo-2": "^0.4.2",
+    "@expo-google-fonts/figtree": "^0.4.1",
     "@google/genai": "^2.19.0",
+    "babel-preset-expo": "~57.0.0",
     "expo": "~57.0.0",
+    "expo-font": "~57.0.2",
     "expo-image-picker": "~57.0.14",
     "expo-location": "~57.0.14",
     "expo-notifications": "~57.0.15",
+    "expo-splash-screen": "~57.0.8",
     "expo-sqlite": "~57.0.2",
     "expo-status-bar": "~57.0.0",
     "expo-task-manager": "~57.0.14",
     "react": "19.2.3",
     "react-native": "0.86.0",
-    "react-native-maps": "1.27.2"
+    "react-native-gesture-handler": "~2.32.0",
+    "react-native-maps": "1.27.2",
+    "react-native-reanimated": "4.5.1",
+    "react-native-svg": "15.15.4"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",

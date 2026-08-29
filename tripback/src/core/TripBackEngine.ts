@@ -9,7 +9,6 @@ import type {
 } from '../domain/types';
 import { sydneyDemoRoute } from '../simulation/sydneyRoute';
 import { tripBackDatabase } from '../services/database/TripBackDatabase';
-import { generateWalkSummary } from '../services/discovery/GeminiClient';
 import {
   requestWalkLocationPermissions,
   startWalkLocationUpdates,
@@ -106,20 +105,7 @@ class TripBackEngine {
       return;
     }
 
-    const spots = await tripBackDatabase.listDiscoveriesForWalk(walk.id);
-    let title: string | undefined;
-    let summary: string | undefined;
-    if (spots.length > 0) {
-      try {
-        const generated = await generateWalkSummary(walk, spots);
-        title = generated.title;
-        summary = generated.summary;
-      } catch (error) {
-        console.warn('Unable to summarise walk', error);
-      }
-    }
-
-    await tripBackDatabase.endActiveWalk({ title, summary });
+    await tripBackDatabase.endActiveWalk();
     this.update({ activeWalk: undefined });
   }
 

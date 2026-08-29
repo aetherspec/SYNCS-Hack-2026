@@ -115,15 +115,9 @@ export function PortalViewerModal({
             <Text style={styles.closeText}>Close</Text>
           </Pressable>
           <View style={styles.caption}>
-            <Text style={styles.label}>AI HISTORICAL INTERPRETATION · {portal.year}</Text>
+            <Text style={styles.label}>{portal.year}</Text>
             <Text style={styles.title}>{portal.placeTitle ?? 'This viewpoint'}</Text>
-            <Text style={styles.hint}>
-              {lookAround.pastLookRange
-                ? 'Walk back to the pin to stay inside this streetscape.'
-                : useFallback
-                  ? 'Turn, take a few steps, or drag to look around this 2D streetscape.'
-                  : 'Turn and take a few steps. The historical plate stays locked in the street.'}
-            </Text>
+            <Text style={styles.hint}>Drag to look around this streetscape.</Text>
           </View>
         </View>
       </View>
