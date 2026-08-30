@@ -13,6 +13,7 @@ import { currentCoordinate, useAppState } from '@/components/app-state';
 import { Motion } from '@/components/motion';
 import { EraPicker } from '@/components/era-picker';
 import { HistoricalVideoAction } from '@/components/historical-video';
+import { MediaSaveActions } from '@/components/media-save-actions';
 import { PlaceHero } from '@/components/time-slider';
 import { useOpenTimePortal } from '@/components/use-open-time-portal';
 import { usePlacePhoto } from '@/components/use-place-photo';
@@ -186,6 +187,11 @@ export default function DiscoverScreen() {
             thenUri={portal?.thenUri}
             nowUri={portal?.modernUri}
             photoUri={photoUri}
+          />
+          <MediaSaveActions
+            modernUri={portal?.modernUri}
+            historicalUri={portal?.thenUri}
+            year={portal?.year ?? era}
           />
         </Motion>
 

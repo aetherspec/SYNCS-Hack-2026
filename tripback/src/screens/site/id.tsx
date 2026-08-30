@@ -11,6 +11,7 @@ import {
 import { Motion } from '@/components/motion';
 import { EraPicker } from '@/components/era-picker';
 import { HistoricalVideoAction } from '@/components/historical-video';
+import { MediaSaveActions } from '@/components/media-save-actions';
 import { useAppState } from '@/components/app-state';
 import { PlaceHero } from '@/components/time-slider';
 import { useOpenTimePortal } from '@/components/use-open-time-portal';
@@ -68,6 +69,11 @@ export default function SiteDetailScreen() {
             thenUri={portal?.thenUri}
             nowUri={portal?.modernUri}
             photoUri={photoUri}
+          />
+          <MediaSaveActions
+            modernUri={portal?.modernUri}
+            historicalUri={portal?.thenUri}
+            year={portal?.year ?? era}
           />
         </Motion>
 

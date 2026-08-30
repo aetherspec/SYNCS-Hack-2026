@@ -42,6 +42,14 @@
         }
       ],
       "expo-video",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "TripBack can access photos you choose for historical scenes.",
+          "savePhotosPermission": "TripBack saves your original photos, historical reconstructions and videos to your camera roll.",
+          "granularPermissions": ["photo", "video"]
+        }
+      ],
       "expo-web-browser"
     ]
   }

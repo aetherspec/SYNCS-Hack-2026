@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { VideoView, useVideoPlayer } from 'expo-video';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAppState } from '@/components/app-state';
 import { Fonts, Palette } from '@/constants/theme';
+import { saveToCameraRoll } from '@/services/media/saveToCameraRoll';
 
 export function HistoricalVideoAction({
   siteId,
@@ -54,6 +56,7 @@ export function HistoricalVideoAction({
 }
 
 export function HistoricalVideoLayer() {
+  const [savingVideo, setSavingVideo] = useState(false);
   const {
     videoJobs,
     dismissVideoJob,
@@ -125,6 +128,24 @@ export function HistoricalVideoLayer() {
               <Text numberOfLines={1} style={styles.viewerTitle}>{viewingVideo?.title}</Text>
               <Text style={styles.viewerSub}>An AI historical interpretation</Text>
             </View>
+            <Pressable
+              accessibilityRole="button"
+              disabled={savingVideo || !viewingVideo?.uri}
+              onPress={() => {
+                if (!viewingVideo?.uri) return;
+                setSavingVideo(true);
+                void saveToCameraRoll(viewingVideo.uri, 'video')
+                  .then(() => Alert.alert('Saved to Photos', 'Your historical video is now in your camera roll.'))
+                  .catch((error) => Alert.alert(
+                    'Couldn’t save video',
+                    error instanceof Error ? error.message : String(error),
+                  ))
+                  .finally(() => setSavingVideo(false));
+              }}
+              style={[styles.saveVideo, savingVideo && { opacity: 0.65 }]}
+            >
+              <Text style={styles.saveVideoText}>{savingVideo ? 'Saving…' : 'Save ↓'}</Text>
+            </Pressable>
           </View>
         </View>
       </Modal>
@@ -190,4 +211,14 @@ const styles = StyleSheet.create({
   viewerLabel: { flex: 1 },
   viewerTitle: { fontFamily: Fonts.bodyBold, fontSize: 15, color: Palette.white },
   viewerSub: { fontFamily: Fonts.body, fontSize: 11.5, color: '#D5D2DB' },
+  saveVideo: {
+    minWidth: 70,
+    height: 40,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Palette.lime,
+  },
+  saveVideoText: { fontFamily: Fonts.bodyBold, fontSize: 12.5, color: Palette.ink },
 });

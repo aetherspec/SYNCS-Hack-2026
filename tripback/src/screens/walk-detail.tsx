@@ -13,6 +13,7 @@ import { Redirect, useLocalSearchParams, useRouter } from '@/nav';
 
 import { Motion } from '@/components/motion';
 import { HistoricalVideoAction } from '@/components/historical-video';
+import { MediaSaveActions } from '@/components/media-save-actions';
 import { PlaceHero } from '@/components/time-slider';
 import { WalkMap } from '@/components/walk-map';
 import { PLACES } from '@/constants/places';
@@ -161,6 +162,11 @@ export default function WalkDetailScreen() {
                 thenUri={sitePortals[p.id]?.thenUri}
                 nowUri={sitePortals[p.id]?.modernUri}
                 photoUri={p.thumb}
+              />
+              <MediaSaveActions
+                modernUri={sitePortals[p.id]?.modernUri}
+                historicalUri={sitePortals[p.id]?.thenUri}
+                year={p.activeEra ?? '1900'}
               />
             </Motion>
             <View style={styles.portalBody}>
